@@ -1,0 +1,9 @@
+{
+  "enabledMcpjsonServers": ["serena", "markitdown"],
+  "enableAllProjectMcpServers": true,
+  "permissions": {
+    "allow": ["mcp__markitdown__convert_to_markdown"],
+    "deny": [],
+    "ask": []
+  }
+}
