@@ -26,6 +26,8 @@
             ## Nix
             nixd
             alejandra
+            ## Python
+            black
             ;
         };
       };
