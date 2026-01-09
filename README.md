@@ -120,43 +120,15 @@ def parse_newbank_statement(file_path: Path) -> Optional[Dict]:
         'account_number': '...',
         'holder_name': '...',
         'balance': 0.0,
-        'fd_amount': 0.0,
         'source_file': file_path.name
     }
 ```
 
 2. Register it in the `PARSERS` dict and add to the processing pipeline.
 
-## Security Notes
-
-- Bank statements contain sensitive information
-- `output/` and `data/` directories are gitignored
-- Never commit actual bank data to version control
-- Use environment variables for sensitive paths in production
-
-## Troubleshooting
-
-### Issue: "No data found" in web dashboard
-**Solution**: Run `python process_all.py` first to generate `output/bank_data.json`
-
-### Issue: Excel file parsing errors
-**Solution**: Check file format matches expected structure. Add debug prints in parser functions.
-
-### Issue: Charts not displaying
-**Solution**: Ensure Plotly is installed: `pip install plotly`
-
 ## Future Enhancements
 
 - [ ] Mutual fund statement parsing
-- [ ] FD maturity tracking and alerts
 - [ ] Historical trend analysis
 - [ ] Email report generation
 - [ ] Automated monthly processing
-
-## License
-
-MIT License - See LICENSE file for details
-
-## Contributing
-
-Feel free to open issues or submit pull requests for improvements!

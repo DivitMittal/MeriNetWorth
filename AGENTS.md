@@ -47,7 +47,7 @@ streamlit run web/app.py
 ### Parser Architecture
 
 Each bank has a dedicated parser function in `src/bank_parsers.py`:
-- Returns standardized dict: `{bank, account_number, holder_name, balance, fd_amount, source_file}`
+- Returns standardized dict: `{bank, account_number, holder_name, balance, source_file}`
 - Parsers registered in `PARSERS` dict for programmatic access
 - All parsers must handle errors gracefully and return `None` on failure
 
@@ -68,7 +68,6 @@ def parse_<bank>_statement(file_path: Path) -> Optional[Dict]:
     'account_number': str, # Account identifier
     'holder_name': str,    # Account holder (may be empty)
     'balance': float,      # Current balance
-    'fd_amount': float,    # Fixed deposit amount (currently 0.0)
     'source_file': str     # Source filename
 }
 ```
@@ -122,7 +121,6 @@ def parse_newbank_statement(file_path: Path) -> Optional[Dict]:
             'account_number': extracted_account_no,
             'holder_name': extracted_holder_name,
             'balance': extracted_balance,
-            'fd_amount': 0.0,
             'source_file': file_path.name
         }
     except Exception as e:
@@ -176,8 +174,7 @@ for file_path in BANK_PATH.glob('NewBank/*.xlsx'):
 ### Known Limitations
 1. **Bandhan/ICICI/IndusInd parsers**: Use filename as account number (not extracted from file)
 2. **Date handling**: Assumes consistent formats, no explicit date parsing
-3. **FD amounts**: Currently hardcoded to 0.0 (future enhancement)
-4. **Dashboard refresh**: Requires manual refresh for new data
+3. **Dashboard refresh**: Requires manual refresh for new data
 
 ## File Path Configuration
 
