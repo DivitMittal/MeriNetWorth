@@ -1,0 +1,10 @@
+# Core data processing
+pandas>=2.0.0
+numpy>=1.24.0
+openpyxl>=3.1.0
+xlrd>=2.0.1
+python-dateutil>=2.8.0
+
+# Web dashboard
+streamlit>=1.28.0
+plotly>=5.17.0
