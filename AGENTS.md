@@ -1,8 +1,6 @@
-# CLAUDE.md
-
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-
 ## Project Overview
+
+- @docs/
 
 MeriNetWorth is a bank account consolidation system that extracts data from multiple bank statement formats and provides visual analytics through a web dashboard. The system processes statements from IDFC First, Equitas, Bandhan, ICICI, and IndusInd banks.
 
