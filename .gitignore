@@ -7,6 +7,7 @@ __pycache__/
 venv/
 env/
 ENV/
+.venv/
 
 # Jupyter Notebook
 .ipynb_checkpoints
@@ -19,6 +20,9 @@ output/
 *.xlsx
 *.xls
 !**/requirements.txt
+
+# Streamlit secrets (contains passwords)
+.streamlit/secrets.toml
 
 # IDE
 .vscode/
