@@ -25,10 +25,14 @@ The system employs a two-phase architecture:
 │       │   ├── Equitas/
 │       │   ├── Bandhan/
 │       │   ├── ICICI/
-│       │   └── IndusInd/
+│       │   ├── IndusInd/
+│       │   └── Kotak/
 │       └── Equity/                   # Equity holdings data
+│           ├── cdsl/                 # CDSL demat statements
+│           └── nsdl/                 # NSDL demat statements
 ├── src/                              # Source modules
 │   ├── bank_parsers.py               # Bank-specific parsing functions
+│   ├── equity_parsers.py             # CDSL/NSDL demat statement parsers
 │   ├── process_banks.py              # Bank processing orchestration
 │   └── process_equity.py             # Equity processing logic
 ├── web/
@@ -61,7 +65,7 @@ The system processes bank statements stored in `data/MM.YY/Bank/` directories, o
   - Account holder name identification
   - Closing balance calculation
   - Source file tracking
-- **Supported Banks:** IDFC First, Equitas, Bandhan, ICICI, IndusInd
+- **Supported Banks:** IDFC First, Equitas, Bandhan, ICICI, IndusInd, Kotak Mahindra
 
 | Bank | Format | Key Fields Extracted |
 |------|--------|---------------------|
@@ -70,8 +74,24 @@ The system processes bank statements stored in `data/MM.YY/Bank/` directories, o
 | Bandhan | CSV (.csv) | Balance |
 | ICICI | Excel (.xls) | Balance |
 | IndusInd | CSV (.csv) | Balance |
+| Kotak Mahindra | CSV (.csv) | Account No, Holder, Balance |
 
-### 4.2. Web Dashboard
+### 4.2. Equity Parsers
+
+- **File:** `src/equity_parsers.py`
+- **Description:** Contains depository-specific parsing functions for equity holdings:
+  - ISIN identification and security name extraction
+  - Quantity and valuation parsing
+  - Portfolio value calculation
+  - Holder information extraction
+- **Supported Depositories:** CDSL, NSDL
+
+| Depository | Format | Key Fields Extracted |
+|------------|--------|---------------------|
+| CDSL | CSV (.csv) | DP ID, Client ID, Holder Name, Holdings (ISIN, Quantity, Price, Value) |
+| NSDL | Excel (.xlsx/.xls) | DP ID, Client ID, Holder Name, Holdings (ISIN, Quantity, Price, Value) |
+
+### 4.3. Web Dashboard
 
 - **File:** `web/app.py`
 - **Description:** Interactive Streamlit dashboard providing:
@@ -102,9 +122,10 @@ python process_all.py
 
 This will:
 - Parse bank statements from `data/MM.YY/Bank/`
-- Extract account balances and metadata
-- Generate `output/bank_data.json` for the dashboard
-- Create `output/Bank-Consolidated-*.xlsx` Excel report
+- Parse equity holdings from `data/MM.YY/Equity/`
+- Extract account balances and portfolio valuations
+- Generate `output/bank_data.json` and `output/equity_data.json`
+- Create consolidated Excel reports
 
 ### 5.3. Launch Web Dashboard
 
