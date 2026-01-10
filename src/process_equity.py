@@ -59,7 +59,9 @@ def process_all_equity_statements(equity_path: Path, sync_prices: bool = False):
             result = parse_nsdl_statement(file_path)
             if result:
                 all_accounts.append(result)
-                print(f"  ✓ {file_path.name}: {result['total_holdings']} holdings")
+                print(
+                    f"  ✓ {file_path.name}: ₹{result['total_value']:,.2f} ({result['total_holdings']} holdings)"
+                )
     else:
         print(f"  ⚠️  NSDL path not found: {nsdl_path}")
 

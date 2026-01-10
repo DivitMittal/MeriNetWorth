@@ -174,6 +174,8 @@ def parse_nsdl_statement(file_path: Path) -> Optional[Dict]:
         isin_col = None
         name_col = None
         qty_col = None
+        price_col = None
+        value_col = None
 
         # More flexible column matching with expanded keywords
         # Clean column names: strip whitespace and remove special chars
@@ -204,6 +206,19 @@ def parse_nsdl_statement(file_path: Path) -> Optional[Dict]:
                           'closing balance', 'closing bal']
             if not qty_col and any(keyword in col_lower for keyword in qty_keywords):
                 qty_col = col
+
+            # Price column - NEW
+            price_keywords = ['price', 'nav', 'face value', 'ltp', 'close', 'closing price',
+                            'price / nav', 'last price', 'market price']
+            if not price_col and any(keyword in col_lower for keyword in price_keywords):
+                # Avoid matching "Value in Rs." as price column
+                if 'value in' not in col_lower and 'total value' not in col_lower:
+                    price_col = col
+
+            # Value column - NEW (check after price to avoid confusion)
+            value_keywords = ['value in', 'amount', 'total value', 'market value', 'value (']
+            if not value_col and any(keyword in col_lower for keyword in value_keywords):
+                value_col = col
 
         if not (isin_col and name_col and qty_col):
             print(f"⚠️  Warning: Could not identify all required columns in {file_path.name}")
@@ -261,6 +276,7 @@ def parse_nsdl_statement(file_path: Path) -> Optional[Dict]:
 
         # Parse holdings
         holdings = []
+        total_value = 0.0
         for _, row in df.iterrows():
             try:
                 isin = str(row[isin_col]).strip()
@@ -269,16 +285,37 @@ def parse_nsdl_statement(file_path: Path) -> Optional[Dict]:
                 if pd.isna(row[isin_col]) or isin == "" or isin.lower() == "nan":
                     continue
 
-                # NSDL statements typically don't have price data
+                # Extract quantity
+                quantity = float(row[qty_col])
+
+                # Extract price if available, otherwise 0.0
+                last_price = 0.0
+                if price_col and pd.notna(row[price_col]):
+                    try:
+                        last_price = float(row[price_col])
+                    except (ValueError, TypeError):
+                        last_price = 0.0
+
+                # Extract value if available, otherwise calculate from price * quantity
+                value = 0.0
+                if value_col and pd.notna(row[value_col]):
+                    try:
+                        value = float(row[value_col])
+                    except (ValueError, TypeError):
+                        value = last_price * quantity
+                else:
+                    value = last_price * quantity
+
                 holding = {
                     "isin": isin,
                     "name": str(row[name_col]).strip(),
-                    "quantity": float(row[qty_col]),
-                    "last_price": 0.0,  # Will be fetched from API
-                    "value": 0.0,  # Will be calculated
+                    "quantity": quantity,
+                    "last_price": last_price,
+                    "value": value,
                     "paid_up_value": 0.0,
                 }
                 holdings.append(holding)
+                total_value += value
             except Exception as e:
                 continue
 
@@ -299,7 +336,7 @@ def parse_nsdl_statement(file_path: Path) -> Optional[Dict]:
             "holder_name": holder_name,
             "dp_name": "NSDL",
             "statement_date": statement_date,
-            "total_value": 0.0,  # Will be calculated after price fetch
+            "total_value": total_value,  # Calculated from holdings (or 0.0 if no price data)
             "total_holdings": len(holdings),
             "holdings": holdings,
             "source_file": file_path.name,
