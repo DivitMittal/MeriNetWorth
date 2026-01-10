@@ -65,9 +65,12 @@ def parse_idfc_statement(file_path: Path) -> Optional[Dict]:
                 account_number = extract_account_number(row[1])
             elif "CUSTOMER NAME" in str(row[0]):
                 holder_name = standardize_holder_name(row[1])
-            elif "Closing Balance" in str(row[0]):
-                closing_balance = clean_amount(row[3])
-                break
+            # Header row format: Opening Balance | Total Debit | Total Credit | Closing Balance
+            elif "Opening Balance" in str(row[0]) and "Closing Balance" in str(row[3]):
+                # Next row has the actual values
+                if idx + 1 < len(df):
+                    closing_balance = clean_amount(df.iloc[idx + 1][3])
+                    break
 
         return {
             "bank": "IDFC FIRST",
@@ -171,19 +174,59 @@ def parse_icici_statement(file_path: Path) -> Optional[Dict]:
         Dictionary with account details or None if parsing fails
     """
     try:
-        df = pd.read_excel(file_path)
+        # ICICI files have headers at varying positions, need to find them
+        df_raw = pd.read_excel(file_path, header=None)
 
         closing_balance = 0.0
+        account_number = file_path.stem
+        holder_name = ""
 
-        # Try to find balance column
-        balance_cols = [col for col in df.columns if "balance" in str(col).lower()]
-        if balance_cols:
-            closing_balance = clean_amount(df[balance_cols[0]].dropna().iloc[-1])
+        # Find the header row with "Balance"
+        header_row_idx = None
+        balance_col_idx = None
+
+        for idx, row in df_raw.iterrows():
+            for col_idx, val in enumerate(row):
+                if pd.notna(val) and "Balance(INR)" in str(val):
+                    header_row_idx = idx
+                    balance_col_idx = col_idx
+                    break
+            if header_row_idx is not None:
+                break
+
+        # Extract holder name from header (usually in row with "Transactions List")
+        for idx, row in df_raw.iterrows():
+            if idx >= header_row_idx:
+                break
+            for val in row:
+                if pd.notna(val) and "Transactions List" in str(val):
+                    # Format: "Transactions List - NAME1, NAME2 - ACCOUNT"
+                    parts = str(val).split("-")
+                    if len(parts) >= 2:
+                        holder_name = standardize_holder_name(parts[1].strip().split(",")[0])
+                    break
+
+        # Get balance from the last transaction row
+        if header_row_idx is not None and balance_col_idx is not None:
+            # Read transaction data starting after header
+            balance_values = df_raw[balance_col_idx].iloc[header_row_idx + 1 :].dropna()
+            # Filter out non-numeric values (like "Balance(INR)" if it appears)
+            numeric_balances = []
+            for val in balance_values:
+                try:
+                    numeric_val = clean_amount(val)
+                    if numeric_val > 0:
+                        numeric_balances.append(numeric_val)
+                except:
+                    pass
+
+            if numeric_balances:
+                closing_balance = numeric_balances[-1]
 
         return {
             "bank": "ICICI",
-            "account_number": file_path.stem,
-            "holder_name": "",
+            "account_number": account_number,
+            "holder_name": holder_name,
             "balance": closing_balance,
             "source_file": file_path.name,
         }
@@ -223,6 +266,75 @@ def parse_indusind_statement(file_path: Path) -> Optional[Dict]:
         return None
 
 
+def parse_kotak_statement(file_path: Path) -> Optional[Dict]:
+    """
+    Parse Kotak Mahindra Bank CSV statement
+
+    Args:
+        file_path: Path to Kotak CSV statement file
+
+    Returns:
+        Dictionary with account details or None if parsing fails
+    """
+    try:
+        # Read the file as text first to parse header information
+        with open(file_path, 'r', encoding='utf-8-sig') as f:
+            lines = f.readlines()
+
+        account_number = ""
+        holder_name = ""
+        closing_balance = 0.0
+        transaction_start_idx = -1
+
+        # Parse header lines
+        for i, line in enumerate(lines):
+            # Holder name is typically in line 1 (index 1)
+            if i == 1:
+                holder_name = standardize_holder_name(line.strip())
+
+            # Account number is in a line with "Account No."
+            if "Account No." in line:
+                parts = line.split(',')
+                for part in parts:
+                    if part.strip() and "Account No." not in part and part.strip() != "":
+                        account_number = extract_account_number(part)
+                        break
+
+            # Find where transaction table starts
+            if "Sl. No." in line and "Transaction Date" in line:
+                transaction_start_idx = i + 1
+                break
+
+        # Read transaction data from the transaction start line
+        if transaction_start_idx > 0:
+            # Read CSV starting from transaction table with proper headers
+            df_transactions = pd.read_csv(file_path, skiprows=transaction_start_idx - 1)
+
+            # Find balance column
+            balance_col = None
+            for col in df_transactions.columns:
+                if "Balance" in str(col):
+                    balance_col = col
+                    break
+
+            if balance_col is not None:
+                # Get last non-null balance value
+                balance_values = df_transactions[balance_col].dropna()
+                if len(balance_values) > 0:
+                    closing_balance = clean_amount(balance_values.iloc[-1])
+
+        return {
+            "bank": "Kotak Mahindra",
+            "account_number": account_number,
+            "holder_name": holder_name,
+            "balance": closing_balance,
+            "source_file": file_path.name,
+        }
+    except Exception as e:
+        print(f"❌ Error parsing Kotak file {file_path.name}: {str(e)}")
+        return None
+
+
 # Parser registry for easy access
 PARSERS = {
     "idfc": parse_idfc_statement,
@@ -230,6 +342,7 @@ PARSERS = {
     "bandhan": parse_bandhan_statement,
     "icici": parse_icici_statement,
     "indusind": parse_indusind_statement,
+    "kotak": parse_kotak_statement,
 }
 
 
