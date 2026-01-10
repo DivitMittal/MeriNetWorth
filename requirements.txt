@@ -8,3 +8,4 @@ python-dateutil>=2.8.0
 # Web dashboard
 streamlit>=1.28.0
 plotly>=5.17.0
+watchdog>=3.0.0

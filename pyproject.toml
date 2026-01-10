@@ -30,6 +30,7 @@ dependencies = [
     # Web dashboard
     "streamlit>=1.28.0",
     "plotly>=5.17.0",
+    "watchdog>=3.0.0",
 
     # Jupyter notebook
     "jupyter>=1.0.0",
