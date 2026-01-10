@@ -29,6 +29,13 @@ MeriNetWorth/
 │   └── process_equity.py   # Equity processing logic
 ├── web/
 │   └── app.py              # Streamlit dashboard
+├── tests/                  # Test scripts
+│   ├── test_parsers.py     # Bank parser tests
+│   └── test_equity.py      # Equity parser tests
+├── scripts/
+│   └── debug/              # Debug/inspection utilities
+│       ├── inspect_nsdl.py
+│       └── diagnose_nsdl.py
 ├── output/                 # Generated reports
 │   ├── bank_data.json      # JSON data for web
 │   └── Bank-Consolidated-*.xlsx
