@@ -1,91 +1,26 @@
-#!/usr/bin/env python3
-"""
-Bank Account Data Processor
-Extract and consolidate bank account balances from various bank statements
-"""
-
 import pandas as pd
-import numpy as np
-from pathlib import Path
 import json
 from datetime import datetime
-import warnings
 import sys
 
-warnings.filterwarnings('ignore')
-
-# Add src to path for imports
-sys.path.append(str(Path(__file__).parent))
-
-
-# Configuration
-BASE_PATH = Path(__file__).parent.parent
-DATA_PATH = BASE_PATH / 'data' / '10.25'
-BANK_PATH = DATA_PATH / 'bank'
-OUTPUT_PATH = BASE_PATH / 'output'
-
-# Create output directory if it doesn't exist
-OUTPUT_PATH.mkdir(exist_ok=True)
-
-
-def clean_amount(value):
-    """Convert various amount formats to float"""
-    if pd.isna(value):
-        return 0.0
-    if isinstance(value, (int, float)):
-        return float(value)
-    # Remove currency symbols, commas, and convert to float
-    cleaned = str(value).replace('₹', '').replace(',', '').replace('INR', '').strip()
-    try:
-        return float(cleaned)
-    except:
-        return 0.0
-
-
-def extract_account_number(text):
-    """Extract account number from text, handling masked numbers"""
-    if pd.isna(text):
-        return ''
-    return str(text).strip()
-
-
-def standardize_holder_name(name):
-    """Standardize holder names for consistency"""
-    if pd.isna(name):
-        return ''
-    name = str(name).strip()
-    # Common standardizations
-    replacements = {
-        'Mrs.': '',
-        'Mr.': '',
-        'Ms.': '',
-        'MITAL': 'Mittal',
-        'MITTAL': 'Mittal'
-    }
-    for old, new in replacements.items():
-        name = name.replace(old, new)
-    return name.strip()
+from src.config import BASE_PATH, DATA_PATH, BANK_PATH, OUTPUT_PATH
+from src.bank_parsers import clean_amount, extract_account_number, standardize_holder_name
 
 
 def parse_idfc_statement(file_path):
-    """Parse IDFC First Bank Excel statement"""
     try:
         df = pd.read_excel(file_path, sheet_name='Account Statement')
 
-        # Extract account details from header rows
         account_number = ''
         holder_name = ''
         closing_balance = 0.0
 
-        # Find account number (usually in row with 'ACCOUNT NUMBER')
         for idx, row in df.iterrows():
             if 'ACCOUNT NUMBER' in str(row[0]):
                 account_number = extract_account_number(row[1])
             elif 'CUSTOMER NAME' in str(row[0]):
                 holder_name = standardize_holder_name(row[1])
-            # Header row format: Opening Balance | Total Debit | Total Credit | Closing Balance
             elif 'Opening Balance' in str(row[0]) and 'Closing Balance' in str(row[3]):
-                # Next row has the actual values
                 if idx + 1 < len(df):
                     closing_balance = clean_amount(df.iloc[idx + 1][3])
                     break
@@ -98,12 +33,11 @@ def parse_idfc_statement(file_path):
             'source_file': file_path.name
         }
     except Exception as e:
-        print(f"❌ Error parsing IDFC file {file_path.name}: {str(e)}")
+        print(f"Error parsing IDFC file {file_path.name}: {str(e)}")
         return None
 
 
 def parse_equitas_statement(file_path):
-    """Parse Equitas Small Finance Bank Excel statement"""
     try:
         df = pd.read_excel(file_path, sheet_name=0)
 
@@ -111,7 +45,6 @@ def parse_equitas_statement(file_path):
         holder_name = ''
         closing_balance = 0.0
 
-        # Equitas has a specific structure
         for idx, row in df.iterrows():
             if 'Account Number' in str(row[1]):
                 account_number = extract_account_number(row[7])
@@ -120,7 +53,6 @@ def parse_equitas_statement(file_path):
             elif 'Available Balance' in str(row[4]):
                 closing_balance = clean_amount(row[5])
 
-        # If closing balance not found in header, get from last transaction
         if closing_balance == 0.0:
             for idx in range(len(df) - 1, -1, -1):
                 if 'End of the Statement' not in str(df.iloc[idx, 0]):
@@ -137,14 +69,12 @@ def parse_equitas_statement(file_path):
             'source_file': file_path.name
         }
     except Exception as e:
-        print(f"❌ Error parsing Equitas file {file_path.name}: {str(e)}")
+        print(f"Error parsing Equitas file {file_path.name}: {str(e)}")
         return None
 
 
 def parse_bandhan_statement(file_path):
-    """Parse Bandhan Bank CSV statement"""
     try:
-        # Read entire file as text to parse header information
         with open(file_path, 'r', encoding='utf-8-sig') as f:
             lines = f.readlines()
 
@@ -152,7 +82,6 @@ def parse_bandhan_statement(file_path):
         holder_name = ''
         closing_balance = 0.0
 
-        # Parse header information
         for i, line in enumerate(lines):
             if 'Full Name of Customer' in line:
                 holder_name = line.split(',', 1)[1].strip() if ',' in line else ''
@@ -160,13 +89,10 @@ def parse_bandhan_statement(file_path):
             elif 'Account Number' in line:
                 account_number = line.split(',', 1)[1].strip() if ',' in line else file_path.stem
             elif line.startswith('Opening Balance'):
-                # Statement Summary line format: Opening Balance,Debits,Credits,Closing Balance
-                # Next line has values: INR2238.38,INR0.00,INR33.00,INR2271.38
                 if i + 1 < len(lines):
                     summary_line = lines[i + 1].strip()
                     parts = summary_line.split(',')
                     if len(parts) >= 4:
-                        # Closing balance is the 4th column
                         closing_balance = clean_amount(parts[3])
                     break
 
@@ -178,21 +104,18 @@ def parse_bandhan_statement(file_path):
             'source_file': file_path.name
         }
     except Exception as e:
-        print(f"❌ Error parsing Bandhan file {file_path.name}: {str(e)}")
+        print(f"Error parsing Bandhan file {file_path.name}: {str(e)}")
         return None
 
 
 def parse_icici_statement(file_path):
-    """Parse ICICI Bank XLS statement"""
     try:
-        # ICICI files have headers at varying positions, need to find them
         df_raw = pd.read_excel(file_path, header=None)
 
         closing_balance = 0.0
         account_number = file_path.stem
         holder_name = ''
 
-        # Find the header row with "Balance"
         header_row_idx = None
         balance_col_idx = None
 
@@ -205,23 +128,18 @@ def parse_icici_statement(file_path):
             if header_row_idx is not None:
                 break
 
-        # Extract holder name from header (usually in row with "Transactions List")
         for idx, row in df_raw.iterrows():
             if idx >= header_row_idx:
                 break
             for val in row:
                 if pd.notna(val) and 'Transactions List' in str(val):
-                    # Format: "Transactions List - NAME1, NAME2 - ACCOUNT"
                     parts = str(val).split('-')
                     if len(parts) >= 2:
                         holder_name = standardize_holder_name(parts[1].strip().split(',')[0])
                     break
 
-        # Get balance from the last transaction row
         if header_row_idx is not None and balance_col_idx is not None:
-            # Read transaction data starting after header
             balance_values = df_raw[balance_col_idx].iloc[header_row_idx + 1:].dropna()
-            # Filter out non-numeric values (like "Balance(INR)" if it appears)
             numeric_balances = []
             for val in balance_values:
                 try:
@@ -242,12 +160,11 @@ def parse_icici_statement(file_path):
             'source_file': file_path.name
         }
     except Exception as e:
-        print(f"❌ Error parsing ICICI file {file_path.name}: {str(e)}")
+        print(f"Error parsing ICICI file {file_path.name}: {str(e)}")
         return None
 
 
 def parse_indusind_statement(file_path):
-    """Parse IndusInd Bank CSV statement"""
     try:
         df = pd.read_csv(file_path)
 
@@ -265,14 +182,12 @@ def parse_indusind_statement(file_path):
             'source_file': file_path.name
         }
     except Exception as e:
-        print(f"❌ Error parsing IndusInd file {file_path.name}: {str(e)}")
+        print(f"Error parsing IndusInd file {file_path.name}: {str(e)}")
         return None
 
 
 def parse_kotak_statement(file_path):
-    """Parse Kotak Mahindra Bank CSV statement"""
     try:
-        # Read the file as text first to parse header information
         with open(file_path, 'r', encoding='utf-8-sig') as f:
             lines = f.readlines()
 
@@ -281,13 +196,10 @@ def parse_kotak_statement(file_path):
         closing_balance = 0.0
         transaction_start_idx = -1
 
-        # Parse header lines
         for i, line in enumerate(lines):
-            # Holder name is typically in line 1 (index 1)
             if i == 1:
                 holder_name = standardize_holder_name(line.strip())
 
-            # Account number is in a line with "Account No."
             if 'Account No.' in line:
                 parts = line.split(',')
                 for part in parts:
@@ -295,17 +207,13 @@ def parse_kotak_statement(file_path):
                         account_number = extract_account_number(part)
                         break
 
-            # Find where transaction table starts
             if 'Sl. No.' in line and 'Transaction Date' in line:
                 transaction_start_idx = i + 1
                 break
 
-        # Read transaction data from the transaction start line
         if transaction_start_idx > 0:
-            # Read CSV starting from transaction table with proper headers
             df_transactions = pd.read_csv(file_path, skiprows=transaction_start_idx - 1)
 
-            # Find balance column
             balance_col = None
             for col in df_transactions.columns:
                 if 'Balance' in str(col):
@@ -313,7 +221,6 @@ def parse_kotak_statement(file_path):
                     break
 
             if balance_col is not None:
-                # Get last non-null balance value
                 balance_values = df_transactions[balance_col].dropna()
                 if len(balance_values) > 0:
                     closing_balance = clean_amount(balance_values.iloc[-1])
@@ -326,105 +233,87 @@ def parse_kotak_statement(file_path):
             'source_file': file_path.name
         }
     except Exception as e:
-        print(f"❌ Error parsing Kotak file {file_path.name}: {str(e)}")
+        print(f"Error parsing Kotak file {file_path.name}: {str(e)}")
         return None
 
 
 def process_all_bank_statements():
-    """Process all bank statements and consolidate data"""
     all_accounts = []
 
-    print("\n" + "="*60)
-    print("🏦 PROCESSING ALL BANK STATEMENTS")
-    print("="*60 + "\n")
+    print("\nProcessing bank statements\n")
 
-    # IDFC First Bank
-    print("📊 Processing IDFC First Bank...")
+    print("IDFC First Bank")
     idfc_path = BANK_PATH / 'idfc'
     if idfc_path.exists():
         for file_path in idfc_path.glob('*.xlsx'):
             result = parse_idfc_statement(file_path)
             if result:
                 all_accounts.append(result)
-                print(f"  ✓ {file_path.name}: ₹{result['balance']:,.2f}")
+                print(f"  {file_path.name}: {result['balance']:,.2f}")
 
-    # Equitas Bank
-    print("\n📊 Processing Equitas Bank...")
+    print("\nEquitas Bank")
     equitas_path = BANK_PATH / 'equitas'
     if equitas_path.exists():
         for file_path in equitas_path.glob('*.xlsx'):
             result = parse_equitas_statement(file_path)
             if result:
                 all_accounts.append(result)
-                print(f"  ✓ {file_path.name}: ₹{result['balance']:,.2f}")
+                print(f"  {file_path.name}: {result['balance']:,.2f}")
 
-    # Bandhan Bank
-    print("\n📊 Processing Bandhan Bank...")
+    print("\nBandhan Bank")
     bandhan_path = BANK_PATH / 'bandhan'
     if bandhan_path.exists():
         for file_path in bandhan_path.glob('*.csv'):
             result = parse_bandhan_statement(file_path)
             if result:
                 all_accounts.append(result)
-                print(f"  ✓ {file_path.name}: ₹{result['balance']:,.2f}")
+                print(f"  {file_path.name}: {result['balance']:,.2f}")
 
-    # ICICI Bank
-    print("\n📊 Processing ICICI Bank...")
+    print("\nICICI Bank")
     icici_path = BANK_PATH / 'icici'
     if icici_path.exists():
         for file_path in icici_path.glob('*.xlsx'):
             result = parse_icici_statement(file_path)
             if result:
                 all_accounts.append(result)
-                print(f"  ✓ {file_path.name}: ₹{result['balance']:,.2f}")
+                print(f"  {file_path.name}: {result['balance']:,.2f}")
 
-    # Kotak Mahindra Bank
-    print("\n📊 Processing Kotak Mahindra Bank...")
+    print("\nKotak Mahindra Bank")
     kotak_path = BANK_PATH / 'kotak'
     if kotak_path.exists():
         for file_path in kotak_path.glob('*.csv'):
             result = parse_kotak_statement(file_path)
             if result:
                 all_accounts.append(result)
-                print(f"  ✓ {file_path.name}: ₹{result['balance']:,.2f}")
+                print(f"  {file_path.name}: {result['balance']:,.2f}")
 
-    # IndusInd Bank
-    print("\n📊 Processing IndusInd Bank...")
+    print("\nIndusInd Bank")
     indusind_path = BANK_PATH / 'indus'
     if indusind_path.exists():
         for file_path in indusind_path.glob('*.csv'):
             result = parse_indusind_statement(file_path)
             if result:
                 all_accounts.append(result)
-                print(f"  ✓ {file_path.name}: ₹{result['balance']:,.2f}")
+                print(f"  {file_path.name}: {result['balance']:,.2f}")
 
-    print("\n" + "="*60)
-    print(f"✅ Total accounts processed: {len(all_accounts)}")
-    print("="*60)
+    print(f"\nTotal accounts processed: {len(all_accounts)}\n")
 
     return pd.DataFrame(all_accounts)
 
 
 def export_to_excel(accounts_df):
-    """Export consolidated data to Excel in FFS format"""
-
-    # Generate filename with current date
     today = datetime.now().strftime('%b\'%y')
     output_file = OUTPUT_PATH / f'Bank-Consolidated-{today}.xlsx'
 
-    # Create Excel writer
     with pd.ExcelWriter(output_file, engine='openpyxl') as writer:
-        # Sheet 1: Raw Data
         accounts_df.to_excel(writer, sheet_name='Raw Data', index=False)
 
-        # Sheet 2: Summary by Bank
         summary = accounts_df.groupby('bank').agg({
             'balance': 'sum',
             'account_number': 'count'
         }).rename(columns={'account_number': 'num_accounts'})
         summary.to_excel(writer, sheet_name='Summary')
 
-        # Sheet 3: FFS Format
         ffs_data = []
         for _, row in accounts_df.iterrows():
             ffs_data.append({
@@ -436,13 +325,11 @@ def export_to_excel(accounts_df):
         ffs_df = pd.DataFrame(ffs_data)
         ffs_df.to_excel(writer, sheet_name=f'Bank - {today}', index=False)
 
-    print(f"\n✅ Excel file created: {output_file}")
+    print(f"Excel file created: {output_file}")
     return output_file
 
 
 def save_json_for_dashboard(accounts_df):
-    """Save JSON for web visualization"""
-    # Prepare data for web visualization
     web_data = {
         'generated_at': datetime.now().isoformat(),
         'total_balance': float(accounts_df['balance'].sum()),
@@ -451,64 +338,51 @@ def save_json_for_dashboard(accounts_df):
         'accounts': accounts_df.to_dict('records')
     }
 
-    # Save to JSON
     json_file = OUTPUT_PATH / 'bank_data.json'
     with open(json_file, 'w') as f:
         json.dump(web_data, f, indent=2)
 
-    print(f"✅ JSON file created: {json_file}")
+    print(f"JSON file created: {json_file}")
     return json_file
 
 
 def main():
-    """Main processing function"""
     try:
-        print("\n" + "="*70)
-        print("MeriNetWorth - Bank Data Processor")
-        print("="*70)
-        print(f"\n📂 Data Path: {DATA_PATH}")
-        print(f"📂 Bank Path: {BANK_PATH}")
-        print(f"📂 Output Path: {OUTPUT_PATH}")
+        print("\nMeriNetWorth - Bank Data Processor")
+        print(f"\nData Path: {DATA_PATH}")
+        print(f"Bank Path: {BANK_PATH}")
+        print(f"Output Path: {OUTPUT_PATH}")
 
-        # Check if bank path exists
         if not BANK_PATH.exists():
-            print(f"\n❌ Error: Bank path does not exist: {BANK_PATH}")
-            print("   Please ensure bank statements are in the correct directory.")
+            print(f"\nError: Bank path does not exist: {BANK_PATH}")
+            print("Please ensure bank statements are in the correct directory.")
             return 1
 
-        # Process all statements
         accounts_df = process_all_bank_statements()
 
         if len(accounts_df) == 0:
-            print("\n⚠️  Warning: No accounts processed. Check your data directory.")
+            print("\nWarning: No accounts processed. Check your data directory.")
             return 1
 
-        # Display summary
         total_balance = accounts_df['balance'].sum()
-        print(f"\n💰 SUMMARY")
-        print("="*60)
-        print(f"Total Balance: ₹{total_balance:,.2f}")
-        print(f"Total Balance: ₹{total_balance/100000:.2f} Lakhs")
+        print(f"\nSUMMARY")
+        print(f"Total Balance: {total_balance:,.2f}")
+        print(f"Total Balance: {total_balance/100000:.2f} Lakhs")
         if total_balance >= 10000000:
-            print(f"Total Balance: ₹{total_balance/10000000:.2f} Crores")
+            print(f"Total Balance: {total_balance/10000000:.2f} Crores")
 
-        # Export to Excel
         export_to_excel(accounts_df)
-
-        # Save JSON for dashboard
         save_json_for_dashboard(accounts_df)
 
-        print("\n" + "="*70)
-        print("✅ Processing complete!")
-        print("="*70)
-        print("\n📊 Next steps:")
-        print("   1. Review: output/Bank-Consolidated-*.xlsx")
-        print("   2. Launch dashboard: streamlit run web/app.py")
+        print("\nProcessing complete!")
+        print("\nNext steps:")
+        print("  1. Review: output/Bank-Consolidated-*.xlsx")
+        print("  2. Launch dashboard: streamlit run web/app.py")
 
         return 0
 
     except Exception as e:
-        print(f"\n❌ Fatal error: {str(e)}")
+        print(f"\nFatal error: {str(e)}")
         import traceback
         traceback.print_exc()
         return 1
