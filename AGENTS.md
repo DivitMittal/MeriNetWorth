@@ -291,11 +291,13 @@ if newdep_path.exists():
 
 ## File Path Configuration
 
-All paths relative to project root:
+All paths are configured in `src/config.py` and resolve relative to the project root:
 ```python
-BASE_PATH = Path('/Users/div/Projects/MeriNetWorth')
-DATA_PATH = BASE_PATH / 'data' / '06.25'  # Change period here
-BANK_PATH = DATA_PATH / 'Bank'
+from pathlib import Path
+
+BASE_PATH = Path(__file__).parent.parent  # Project root
+DATA_PATH = BASE_PATH / 'data' / '10.25'  # Change period suffix as needed
+BANK_PATH = DATA_PATH / 'bank'
 OUTPUT_PATH = BASE_PATH / 'output'
 ```
 
@@ -335,6 +337,80 @@ OUTPUT_PATH = BASE_PATH / 'output'
 ✅ Excel file created: output/Bank-Consolidated-Jun'25.xlsx
 ✅ JSON file created: output/bank_data.json
 ```
+
+## Tax Computation Feature
+
+The dashboard includes a **Tax Computation** tab that provides estimated tax calculations for each individual (identified by PAN card).
+
+### Key Components
+
+1. **`src/pan_config.py`** - Loads PAN registry from private config file
+2. **`src/asset_aggregator.py`** - Aggregates all assets (bank, equity, MF) by PAN
+3. **`src/tax_computation.py`** - Indian tax rules and computation logic
+4. **`config/pan_registry.private.json`** - Private PAN data (not committed to git)
+5. **`config/pan_registry.example.json`** - Example template for PAN config
+
+### PAN Configuration
+
+PAN mappings are stored in a private JSON file that is **not committed to git**.
+
+**Setup:**
+1. Copy `config/pan_registry.example.json` to `config/pan_registry.private.json`
+2. Edit the private file with your actual PAN details
+
+**Format** (`config/pan_registry.private.json`):
+```json
+{
+  "ABCDE1234F": {
+    "name": "Full Name",
+    "name_variants": [
+      "FULL NAME",
+      "Full Name",
+      "FULLNAME"
+    ],
+    "dob": "1990-01-15",
+    "resident_status": "resident",
+    "tax_regime": "new",
+    "is_huf": false
+  }
+}
+```
+
+**Fields:**
+- `name`: Display name for the holder
+- `name_variants`: Array of name variations (as they appear in bank/demat statements)
+- `dob`: Date of birth (YYYY-MM-DD) for age-based tax calculations
+- `resident_status`: "resident", "non-resident", or "rnor"
+- `tax_regime`: "new" or "old"
+- `is_huf`: Set to `true` for HUF accounts
+
+### Tax Rules Implemented (FY 2025-26)
+
+**New Tax Regime Slabs:**
+- Up to ₹3L: Nil
+- ₹3L to ₹7L: 5%
+- ₹7L to ₹10L: 10%
+- ₹10L to ₹12L: 15%
+- ₹12L to ₹15L: 20%
+- Above ₹15L: 30%
+
+**Capital Gains (Budget 2024):**
+- LTCG on Equity/Equity MF: 12.5% (above ₹1.25L exemption)
+- STCG on Equity/Equity MF: 20%
+- Debt MF: Taxed at slab rate
+
+**Other Features:**
+- Standard deduction: ₹75,000 (new regime)
+- Rebate u/s 87A: Up to ₹25,000 for income ≤₹7L
+- Surcharge: 10-37% based on income
+- Health & Education Cess: 4%
+
+### Important Notes
+
+- Tax computations are **ESTIMATES** based on current asset holdings
+- Actual tax depends on realized gains, other income sources, and deductions
+- Interest income is estimated at 4% annual rate on bank balances
+- Capital gains shown are unrealized (for informational purposes only)
 
 ## Future Enhancements Planned
 

@@ -3,12 +3,12 @@
 # Visit: https://huggingface.co/new-space
 # Choose: Streamlit SDK, Private visibility # 2. Clone the space
 git clone https://huggingface.co/spaces/YOUR_USERNAME/YOUR_SPACE_NAME
-cd YOUR_SPACE_NAME # 3. Copy essential files
-cp -r /Users/div/Projects/Misc/MeriNetWorth/web .
-cp /Users/div/Projects/Misc/MeriNetWorth/requirements.txt .
-cp /Users/div/Projects/Misc/MeriNetWorth/README_HF.md README.md
-cp -r /Users/div/Projects/Misc/MeriNetWorth/.streamlit .
-cp -r /Users/div/Projects/Misc/MeriNetWorth/output . # 4. Push to Hugging Face
+cd YOUR_SPACE_NAME # 3. Copy essential files from MeriNetWorth
+cp -r /path/to/MeriNetWorth/web .
+cp /path/to/MeriNetWorth/requirements.txt .
+cp /path/to/MeriNetWorth/docs/README_HF.md README.md
+cp -r /path/to/MeriNetWorth/.streamlit .
+cp -r /path/to/MeriNetWorth/output . # 4. Push to Hugging Face
 git add .
 git commit -m "Initial deployment"
 git push # 5. Set password in Space Settings

@@ -71,13 +71,10 @@ git push
 3. Delete and re-create if needed
 4. Wait a few seconds for the Space to reload ### Issue: "ModuleNotFoundError" **Solution**: Missing dependency in requirements.txt 1. Add the missing package to `requirements.txt`
 2. Commit and push
-3. Space will rebuild with new dependencies ### Issue: Path errors (FileNotFoundError) **Solution**: The app uses environment-based paths Check `web/app.py` line 93:
+3. Space will rebuild with new dependencies ### Issue: Path errors (FileNotFoundError) **Solution**: The app uses relative paths by default. Check `web/app.py`:
 ```python
-BASE_PATH = Path(os.environ.get("BASE_PATH", "/Users/div/Projects/MeriNetWorth"))
-``` For Hugging Face Spaces, you may need to adjust paths. Update to:
-```python
-BASE_PATH = Path(os.environ.get("BASE_PATH", "/home/user/app"))
-``` Or set the `BASE_PATH` environment variable in Space settings. ### Issue: Space keeps restarting **Solution**: Check build logs for errors 1. Go to Space → Logs tab
+BASE_PATH = Path(os.environ.get("BASE_PATH", Path(__file__).parent.parent))
+``` For Hugging Face Spaces, set the `BASE_PATH` environment variable in Space settings to `/home/user/app`. ### Issue: Space keeps restarting **Solution**: Check build logs for errors 1. Go to Space → Logs tab
 2. Look for Python errors or missing files
 3. Fix issues and push again ## Security Best Practices 1. **Use Private Space**: Keep your Space visibility set to "Private"
 2. **Strong Password**: Use a strong, unique password (12+ characters, mixed case, numbers, symbols)

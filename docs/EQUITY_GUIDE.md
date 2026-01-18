@@ -39,7 +39,7 @@ data/10.25/equity/ cdsl/ ankurMO.csv divitUpstox.csv hufDhan.csv nsdl/ 5150801IN
 ``` **Supported Formats:**
 - **CDSL**: CSV files with standard CDSL format
 - **NSDL**: Excel files (.xlsx, .xls) ### Step 2: Process Equity Data You have **two options**: #### Option A: Using Python Script (Standalone) ```bash
-cd /Users/div/Projects/Misc/MeriNetWorth # Without price sync (uses prices from statement)
+cd MeriNetWorth  # Without price sync (uses prices from statement)
 python src/process_equity.py # With Upstox price sync
 UPSTOX_ACCESS_TOKEN="your_token" python src/process_equity.py
 ``` #### Option B: Using Jupyter Notebook (Integrated) Open `notebooks/bank_data_processor.ipynb` and add these cells at the end: ```python
@@ -68,7 +68,7 @@ streamlit run web/app.py
 - **Investors**: Once daily or weekly
 - **Long-term holders**: Weekly or before major decisions **Rate Limits**: Upstox API has rate limits. The script includes automatic delays (0.1s between requests) to avoid hitting limits. --- ## Dashboard Features ### Equity Section Includes: 1. **Top Metrics**: - Total Net Worth (Banks + Equity) - Bank Balance - Equity Value - Total Assets count 2. **Equity Holdings Summary**: - Total holdings count - Total portfolio value - Number of demat accounts 3. **Top Holdings Table**: - Security name - Quantity held - Last Traded Price (LTP) - Total value 4. **Visual Charts**: - Pie chart of top 10 holdings - Distribution analysis 5. **Holdings by Demat Account**: - Expandable sections for each account - ISIN codes - Detailed holding information --- ## Troubleshooting ### Issue 1: "No module named 'equity_parsers'" **Solution**: Ensure `src/` directory is in Python path ```python
 import sys
-sys.path.append('/Users/div/Projects/Misc/MeriNetWorth/src')
+sys.path.append('src')  # Or use absolute path to your project's src folder
 ``` ### Issue 2: "UPSTOX_ACCESS_TOKEN not found" **Solution**: Set environment variable ```bash
 export UPSTOX_ACCESS_TOKEN="your_token"
 # Verify it's set
@@ -97,8 +97,8 @@ time.sleep(0.05) # Faster, but higher risk of rate limiting
 - Speeds up subsequent syncs
 - Auto-generated and updated --- ## Advanced Usage ### Custom Sync Schedule For automated daily sync, create a cron job: ```bash
 # Edit crontab
-crontab -e # Add this line (runs at 6 PM daily)
-0 18 * * * cd /Users/div/Projects/Misc/MeriNetWorth && /usr/bin/python3 src/process_equity.py
+crontab -e # Add this line (runs at 6 PM daily, adjust path as needed)
+0 18 * * * cd /path/to/MeriNetWorth && /usr/bin/python3 src/process_equity.py
 ``` ### API Rate Limit Management To avoid hitting Upstox rate limits: 1. **Batch processing**: Group ISINs and process in batches
 2. **Caching**: ISIN mappings are cached automatically
 3. **Delay adjustment**: Increase delay in `get_bulk_ltp()` if needed ### Adding New Demat Accounts 1. Export statement from your broker

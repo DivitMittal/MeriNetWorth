@@ -1,6 +1,6 @@
 # Quick Start Guide Get up and running with MeriNetWorth in 3 simple steps! ## Step 1: Install Dependencies (2 minutes) ```bash
 # Navigate to project directory
-cd /Users/div/Projects/MeriNetWorth # Install required packages
+cd MeriNetWorth  # Install required packages
 pip install -r requirements.txt
 ``` ## Step 2: Process Your Bank Data (5 minutes) ### Option A: Using Jupyter Notebook (Recommended) ```bash
 # Launch Jupyter
