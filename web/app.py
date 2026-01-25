@@ -11,7 +11,11 @@ import sys
 
 sys.path.append(str(Path(__file__).parent.parent))
 
-from src.config import OUTPUT_PATH, DATA_FILE, EQUITY_FILE, NETWORTH_FILE
+from src.config import OUTPUT_PATH, DATA_FILE, EQUITY_FILE, NETWORTH_FILE, LIABILITIES_FILE, PENSION_FILE, FIXED_INCOME_FILE, REAL_ESTATE_FILE, OTHER_ASSETS_FILE
+from src.pan_config import get_holder_info, get_all_pans, get_holder_name
+from src.asset_aggregator import aggregate_by_pan, AggregatedAssets
+from src.tax_computation import compute_tax_for_individual, TaxBreakdown
+from src.dividend_estimator import estimate_dividends_by_pan, DividendSummary
 
 st.set_page_config(
     page_title="MeriNetWorth - Complete Dashboard",
@@ -99,7 +103,7 @@ def check_password():
     return False
 
 
-BASE_PATH = Path(os.environ.get("BASE_PATH", "/Users/div/Projects/MeriNetWorth"))
+BASE_PATH = Path(os.environ.get("BASE_PATH", Path(__file__).parent.parent))
 
 
 @st.cache_data
@@ -137,6 +141,48 @@ def load_mf_data():
 
     with open(mf_file, "r") as f:
         return json.load(f)
+
+
+@st.cache_data
+def load_liabilities_data():
+    if not LIABILITIES_FILE.exists():
+        return None
+
+    with open(LIABILITIES_FILE, "r") as f:
+        return json.load(f)
+
+
+@st.cache_data
+def load_pension_data():
+    if not PENSION_FILE.exists():
+        return None
+    with open(PENSION_FILE, "r") as f:
+        return json.load(f)
+
+
+@st.cache_data
+def load_fixed_income_data():
+    if not FIXED_INCOME_FILE.exists():
+        return None
+    with open(FIXED_INCOME_FILE, "r") as f:
+        return json.load(f)
+
+
+@st.cache_data
+def load_real_estate_data():
+    if not REAL_ESTATE_FILE.exists():
+        return None
+    with open(REAL_ESTATE_FILE, "r") as f:
+        return json.load(f)
+
+
+@st.cache_data
+def load_other_assets_data():
+    if not OTHER_ASSETS_FILE.exists():
+        return None
+    with open(OTHER_ASSETS_FILE, "r") as f:
+        return json.load(f)
+
 
 
 def format_currency(amount):
@@ -216,6 +262,11 @@ def main():
     equity_data = load_equity_data()
     mf_data = load_mf_data()
     networth_data = load_networth_data()
+    liabilities_data = load_liabilities_data()
+    pension_data = load_pension_data()
+    fixed_income_data = load_fixed_income_data()
+    real_estate_data = load_real_estate_data()
+    other_assets_data = load_other_assets_data()
 
     if data is None:
         st.error(
@@ -268,6 +319,11 @@ def main():
     total_networth = data["total_balance"]
     equity_value = 0.0
     mf_value = 0.0
+    pension_value = 0.0
+    fixed_income_value = 0.0
+    real_estate_value = 0.0
+    other_assets_value = 0.0
+    total_liabilities = 0.0
 
     if equity_data:
         equity_value = equity_data.get("total_value", 0.0)
@@ -277,13 +333,34 @@ def main():
         mf_value = mf_data.get("total_value", 0.0)
         total_networth += mf_value
 
-    col1, col2, col3, col4 = st.columns(4)
+    if pension_data:
+        pension_value = pension_data.get("total_value", 0.0)
+        total_networth += pension_value
+
+    if fixed_income_data:
+        fixed_income_value = fixed_income_data.get("total_principal", 0.0)
+        total_networth += fixed_income_value
+
+    if real_estate_data:
+        real_estate_value = real_estate_data.get("total_value", 0.0)
+        total_networth += real_estate_value
+
+    if other_assets_data:
+        other_assets_value = other_assets_data.get("total_value", 0.0)
+        total_networth += other_assets_value
+
+    if liabilities_data:
+        total_liabilities = liabilities_data.get("total_liability", 0.0)
+        total_networth -= total_liabilities
+
+    col1, col2, col3, col4, col5 = st.columns(5)
+
 
     with col1:
         st.markdown(
             f"""
         <div class="metric-card">
-            <h3>Total Net Worth</h3>
+            <h3>Net Worth</h3>
             <h2>{format_currency(total_networth)}</h2>
         </div>
         """,
@@ -323,9 +400,23 @@ def main():
             unsafe_allow_html=True,
         )
 
+    with col5:
+        liability_color = "#ff6b6b" if total_liabilities > 0 else "#4CAF50"
+        st.markdown(
+            f"""
+        <div class="metric-card" style="background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);">
+            <h3>Liabilities</h3>
+            <h2>-{format_currency(total_liabilities)}</h2>
+        </div>
+        """,
+            unsafe_allow_html=True,
+        )
+
     st.markdown("<br>", unsafe_allow_html=True)
 
-    tab_bank, tab_equity, tab_mf = st.tabs(["Banks", "Equity", "Mutual Funds"])
+    tab_bank, tab_equity, tab_mf, tab_pension, tab_fixed_income, tab_real_estate, tab_other, tab_liabilities, tab_tax = st.tabs([
+        "Banks", "Equity", "Mutual Funds", "Pension", "Fixed Income", "Real Estate", "Other Assets", "Liabilities", "Tax Computation"
+    ])
 
     with tab_bank:
         filtered_accounts = [acc for acc in data["accounts"] if acc["bank"] in selected_banks]
@@ -676,6 +767,500 @@ def main():
                                 )
         else:
             st.info("No mutual fund data available. Process MF statements to view holdings.")
+
+    with tab_pension:
+        st.markdown("## Pension (NPS/EPF)")
+        if pension_data and "accounts" in pension_data:
+            col1, col2 = st.columns(2)
+            with col1:
+                st.metric("Total Value", format_currency(pension_data.get("total_value", 0)))
+            with col2:
+                st.metric("Accounts", pension_data.get("account_count", 0))
+
+            st.markdown("### Accounts")
+            for acc in pension_data["accounts"]:
+                st.markdown(
+                    f"""
+                    <div class="bank-card">
+                        <strong>{acc.get('name', 'Unknown')}</strong> ({acc.get('type', 'NPS')})<br>
+                        <strong>Value:</strong> <span style="color: green; font-weight: bold;">{format_currency(acc.get('value', 0))}</span><br>
+                        <small>Source: {acc.get('source_file')}</small>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+        else:
+            st.info("No pension data available.")
+
+    with tab_fixed_income:
+        st.markdown("## Fixed Income (Term Deposits)")
+        if fixed_income_data and "deposits" in fixed_income_data:
+            col1, col2 = st.columns(2)
+            with col1:
+                st.metric("Total Principal", format_currency(fixed_income_data.get("total_principal", 0)))
+            with col2:
+                st.metric("Total Deposits", fixed_income_data.get("deposit_count", 0))
+
+            if "by_bank" in fixed_income_data:
+                st.markdown("### By Bank")
+                bank_data = []
+                for bank, info in fixed_income_data["by_bank"].items():
+                    bank_data.append({"Bank": bank, "Amount": info["principal"], "Count": info["count"]})
+
+                if bank_data:
+                    df_fd_bank = pd.DataFrame(bank_data)
+                    fig = px.pie(df_fd_bank, values="Amount", names="Bank", title="FD Distribution", hole=0.4)
+                    st.plotly_chart(fig, use_container_width=True)
+
+            st.markdown("### Deposit Details")
+            for dep in fixed_income_data["deposits"]:
+                amount_val = dep.get('amount') if 'amount' in dep else dep.get('Amount', 0)
+                holders_val = dep.get('holders') or dep.get('Holders', '')
+                st.markdown(
+                    f"""
+                    <div class="bank-card">
+                        <strong>{dep.get('bank')}</strong> - {dep.get('fd_number', 'N/A')}<br>
+                        Amount: {format_currency(amount_val)} | Rate: {dep.get('interest_rate')}%<br>
+                        Maturity: {dep.get('maturity_date')} | Holders: {holders_val}<br>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+        else:
+            st.info("No fixed income data available.")
+
+    with tab_real_estate:
+        st.markdown("## Real Estate")
+        if real_estate_data and "assets" in real_estate_data:
+            st.metric("Total Value", format_currency(real_estate_data.get("total_value", 0)))
+
+            st.markdown("### Properties")
+            for prop in real_estate_data["assets"]:
+                st.markdown(
+                    f"""
+                    <div class="bank-card">
+                        <strong>{prop.get('name')}</strong><br>
+                        Value: {format_currency(prop.get('value', 0))}
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+        else:
+            st.info("No real estate data available.")
+
+    with tab_other_assets:
+        st.markdown("## Other Assets")
+        if other_assets_data and "assets" in other_assets_data:
+            st.metric("Total Value", format_currency(other_assets_data.get("total_value", 0)))
+
+            st.markdown("### Assets")
+            for asset in other_assets_data["assets"]:
+                st.markdown(
+                    f"""
+                    <div class="bank-card">
+                        <strong>{asset.get('name')}</strong><br>
+                        Value: {format_currency(asset.get('value', 0))}
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+        else:
+            st.info("No other assets data available.")
+
+    with tab_liabilities:
+        st.markdown("## Liabilities & Obligations")
+
+        if liabilities_data and liabilities_data.get("liabilities"):
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("Total Liability", format_currency(liabilities_data.get("total_liability", 0)))
+            with col2:
+                st.metric("Total Receivable", format_currency(liabilities_data.get("total_receivable", 0)))
+            with col3:
+                net_pos = liabilities_data.get("net_position", 0)
+                net_color = "green" if net_pos >= 0 else "red"
+                st.metric("Net Position", format_currency(abs(net_pos)),
+                         delta="Receivable" if net_pos >= 0 else "Payable",
+                         delta_color="normal" if net_pos >= 0 else "inverse")
+
+            st.markdown("### Liability Details")
+
+            for liability_file in liabilities_data.get("liabilities", []):
+                source = liability_file.get("source_file", "Unknown")
+                net_liability = liability_file.get("net_liability", 0)
+                txn_count = liability_file.get("transaction_count", 0)
+
+                with st.expander(f"**{source}** - Net Liability: {format_currency(net_liability)} ({txn_count} transactions)", expanded=True):
+                    transactions = liability_file.get("transactions", [])
+
+                    if transactions:
+                        # Create a dataframe for display
+                        df_txn = pd.DataFrame(transactions)
+
+                        # Format for display
+                        df_display = df_txn.copy()
+                        df_display["amount_display"] = df_display["amount_inr"].apply(
+                            lambda x: f"₹{x:,.2f}" if x >= 0 else f"-₹{abs(x):,.2f}"
+                        )
+                        df_display["type"] = df_display["amount_inr"].apply(
+                            lambda x: "Received" if x > 0 else "Owed"
+                        )
+
+                        # Select and rename columns
+                        display_cols = ["date", "beneficiary", "amount_display", "type"]
+                        display_df = df_display[display_cols]
+                        display_df.columns = ["Date", "Description", "Amount", "Type"]
+
+                        st.dataframe(display_df, use_container_width=True, hide_index=True)
+
+                        # Summary by type
+                        received = sum(t["amount_inr"] for t in transactions if t["amount_inr"] > 0)
+                        owed = abs(sum(t["amount_inr"] for t in transactions if t["amount_inr"] < 0))
+
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            st.markdown(
+                                f"""
+                                <div class="bank-card" style="border-left-color: #4CAF50;">
+                                    <strong>Total Received/Paid Back:</strong> <span style="color: green;">{format_currency(received)}</span>
+                                </div>
+                                """,
+                                unsafe_allow_html=True,
+                            )
+                        with col2:
+                            st.markdown(
+                                f"""
+                                <div class="bank-card" style="border-left-color: #e74c3c;">
+                                    <strong>Total Owed:</strong> <span style="color: red;">{format_currency(owed)}</span>
+                                </div>
+                                """,
+                                unsafe_allow_html=True,
+                            )
+        else:
+            st.info("No liabilities data available. Process liabilities to view details.")
+            st.markdown("""
+            **To add liabilities:**
+            1. Add CSV files to `data/MM.YY/liabilities/`
+            2. Run the liability parser to generate `output/liabilities_data.json`
+
+            **Expected CSV format:**
+            - Date, Beneficiary, Amount (INR), Amount (Euro), Exchange Rate
+            - Negative amounts = money owed, Positive amounts = money received/paid back
+            """)
+
+    with tab_tax:
+        st.markdown("## Tax Computation by PAN")
+        st.markdown(
+            """
+            <div style="background: rgba(255,193,7,0.1); padding: 15px; border-radius: 8px; border-left: 4px solid #ffc107; margin-bottom: 20px;">
+                <strong>⚠️ Disclaimer:</strong> This is an <strong>ESTIMATE</strong> for informational purposes only.
+                Actual tax liability depends on realized gains, other income sources, deductions claimed, and professional tax advice.
+                Tax rules shown are for FY 2025-26 (AY 2026-27).
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # Aggregate assets by PAN
+        aggregated = aggregate_by_pan(
+            bank_data=data,
+            equity_data=equity_data,
+            mf_data=mf_data,
+            pension_data=pension_data,
+            fixed_income_data=fixed_income_data,
+            real_estate_data=real_estate_data,
+            other_assets_data=other_assets_data,
+            liabilities_data=liabilities_data
+        )
+
+        # Estimate dividends by PAN
+        dividend_estimates = estimate_dividends_by_pan(aggregated, equity_data)
+
+        # Filter out UNKNOWN if present
+        valid_pans = [pan for pan in aggregated.keys() if pan != "UNKNOWN"]
+
+        if not valid_pans:
+            st.warning("No PAN mappings found. Please configure src/pan_config.py with holder-to-PAN mappings.")
+        else:
+            # Summary cards for all PANs
+            st.markdown("### Individual Net Worth Summary")
+
+            cols = st.columns(min(len(valid_pans), 3))
+            for idx, pan in enumerate(valid_pans):
+                assets = aggregated[pan]
+                with cols[idx % 3]:
+                    st.markdown(
+                        f"""
+                        <div class="metric-card" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); margin-bottom: 15px;">
+                            <h4>{assets.holder_name}</h4>
+                            <p style="font-size: 0.8rem; opacity: 0.8;">PAN: {pan}</p>
+                            <h3>{format_currency(assets.total_assets)}</h3>
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
+
+            st.markdown("---")
+
+            # Detailed tax computation for each PAN
+            for pan in valid_pans:
+                assets = aggregated[pan]
+                holder_info = get_holder_info(pan)
+
+                if not holder_info:
+                    continue
+
+                # Compute tax
+                mf_gains = {
+                    "invested": assets.total_mf_invested,
+                    "current": assets.total_mf_value,
+                }
+
+                # Get dividend estimate for this PAN
+                div_summary = dividend_estimates.get(pan)
+                dividend_income = div_summary.estimated_annual_dividend if div_summary else 0
+                dividend_tds = div_summary.estimated_tds if div_summary else 0
+
+                tax_breakdown = compute_tax_for_individual(
+                    pan=pan,
+                    holder_info=holder_info,
+                    bank_balance=assets.total_bank_balance,
+                    bank_accounts=assets.bank_accounts,
+                    equity_value=assets.total_equity_value,
+                    mf_value=assets.total_mf_value,
+                    nps_value=assets.total_pension_value,
+                    mf_gains=mf_gains,
+                    dividend_income=dividend_income,
+                    dividend_tds=dividend_tds,
+                )
+
+                # Expandable section for each person
+                with st.expander(
+                    f"**{assets.holder_name}** ({pan}) - Net Worth: {format_currency(assets.total_assets)}",
+                    expanded=len(valid_pans) <= 2
+                ):
+                    # Asset breakdown
+                    col1, col2 = st.columns(2)
+
+                    with col1:
+                        st.markdown("#### Asset Breakdown")
+
+                        asset_data = {
+                            "Category": ["Bank Balance", "Equity Holdings", "Mutual Funds", "Pension/NPS", "Fixed Income", "Real Estate", "Other Assets"],
+                            "Value": [
+                                assets.total_bank_balance,
+                                assets.total_equity_value,
+                                assets.total_mf_value,
+                                assets.total_pension_value,
+                                assets.total_fixed_income_value,
+                                assets.total_real_estate_value,
+                                assets.total_other_assets_value
+                            ],
+                        }
+                        df_assets = pd.DataFrame(asset_data)
+                        df_assets["Display"] = df_assets["Value"].apply(format_currency)
+
+                        # Pie chart of assets
+                        non_zero = df_assets[df_assets["Value"] > 0]
+                        if len(non_zero) > 0:
+                            fig = px.pie(
+                                non_zero,
+                                values="Value",
+                                names="Category",
+                                hole=0.4,
+                                color_discrete_sequence=px.colors.qualitative.Set2,
+                            )
+                            fig.update_traces(textposition="inside", textinfo="percent+label")
+                            fig.update_layout(
+                                showlegend=False,
+                                margin=dict(t=10, b=10, l=10, r=10),
+                                height=250,
+                            )
+                            st.plotly_chart(fig, use_container_width=True)
+
+                        # Asset details
+                        st.markdown(
+                            f"""
+                            <div class="bank-card">
+                                <strong>🏦 Bank Balance:</strong> {format_currency(assets.total_bank_balance)}<br>
+                                <small>({len(assets.bank_accounts)} accounts)</small>
+                            </div>
+                            <div class="bank-card">
+                                <strong>📈 Equity Holdings:</strong> {format_currency(assets.total_equity_value)}<br>
+                                <small>({assets.total_equity_holdings} holdings in {len(assets.demat_accounts)} demat accounts)</small>
+                            </div>
+                            <div class="bank-card">
+                                <strong>💰 Mutual Funds:</strong> {format_currency(assets.total_mf_value)}<br>
+                                <small>Invested: {format_currency(assets.total_mf_invested)} | Gain: {format_currency(assets.mf_unrealized_gain)}</small>
+                            </div>
+                            <div class="bank-card">
+                                <strong>👴 Pension/NPS:</strong> {format_currency(assets.total_pension_value)}<br>
+                                <small>({len(assets.pension_accounts)} accounts)</small>
+                            </div>
+                            <div class="bank-card">
+                                <strong>🏦 Fixed Income:</strong> {format_currency(assets.total_fixed_income_value)}<br>
+                                <small>({len(assets.fixed_income_accounts)} deposits)</small>
+                            </div>
+                            <div class="bank-card">
+                                <strong>🏠 Real Estate:</strong> {format_currency(assets.total_real_estate_value)}<br>
+                                <small>({len(assets.real_estate_assets)} properties)</small>
+                            </div>
+                            <div class="bank-card">
+                                <strong>🪙 Other Assets:</strong> {format_currency(assets.total_other_assets_value)}<br>
+                                <small>({len(assets.other_assets)} items)</small>
+                            </div>
+                            """,
+                            unsafe_allow_html=True,
+                        )
+
+                        # Top dividend stocks section
+                        if div_summary and div_summary.top_dividend_stocks:
+                            st.markdown("#### Top Dividend Stocks")
+                            st.markdown(
+                                f"""
+                                <div style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; margin-bottom: 10px;">
+                                    <small>
+                                        <strong>Annual Dividend (Est.):</strong> {format_currency(div_summary.estimated_annual_dividend)}<br>
+                                        <strong>Avg Yield:</strong> {div_summary.average_dividend_yield:.2f}% |
+                                        <strong>Stocks with data:</strong> {div_summary.holdings_with_dividend_data}/{div_summary.total_holdings}
+                                    </small>
+                                </div>
+                                """,
+                                unsafe_allow_html=True,
+                            )
+
+                            for stock in div_summary.top_dividend_stocks[:5]:
+                                data_icon = "✓" if stock["has_data"] else "~"
+                                st.markdown(
+                                    f"""
+                                    <div class="bank-card" style="padding: 8px;">
+                                        <strong>{data_icon} {stock['name'][:25]}</strong><br>
+                                        <small>Qty: {stock['quantity']:,.0f} | Dividend: {format_currency(stock['dividend'])} ({stock['yield_pct']:.1f}%)</small>
+                                    </div>
+                                    """,
+                                    unsafe_allow_html=True,
+                                )
+
+                    with col2:
+                        st.markdown("#### Estimated Tax (FY 2025-26)")
+
+                        regime_color = "#4CAF50" if tax_breakdown.tax_regime == "new" else "#2196F3"
+                        st.markdown(
+                            f"""
+                            <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                                <p><strong>Tax Regime:</strong> <span style="color: {regime_color}; font-weight: bold;">{tax_breakdown.tax_regime.upper()}</span></p>
+                                <p><strong>Assessment Year:</strong> {tax_breakdown.assessment_year}</p>
+                            </div>
+                            """,
+                            unsafe_allow_html=True,
+                        )
+
+                        # Estimated income
+                        st.markdown("**Estimated Income:**")
+
+                        # Build interest breakdown display
+                        if tax_breakdown.interest_by_bank:
+                            # Show bank-wise breakdown
+                            interest_details = []
+                            for bank, info in tax_breakdown.interest_by_bank.items():
+                                interest_details.append(
+                                    f"&nbsp;&nbsp;• {bank}: {format_currency(info['total_interest'])} "
+                                    f"(Bal: {format_currency(info['total_balance'])})"
+                                )
+                            breakdown_html = "<br>".join(interest_details)
+                            description = "Based on bank-specific interest rates"
+                        else:
+                            breakdown_html = ""
+                            description = "Based on 4% assumed rate on bank balance"
+
+                        st.markdown(
+                            f"""
+                            <div class="bank-card">
+                                <strong>Interest Income (Est.):</strong> {format_currency(tax_breakdown.estimated_interest)}<br>
+                                <small>{description}</small>
+                                {f"<br><small>{breakdown_html}</small>" if breakdown_html else ""}
+                            </div>
+                            """,
+                            unsafe_allow_html=True,
+                        )
+
+                        # Dividend income section
+                        if tax_breakdown.estimated_dividend > 0:
+                            st.markdown(
+                                f"""
+                                <div class="bank-card">
+                                    <strong>💰 Dividend Income (Est.):</strong> {format_currency(tax_breakdown.estimated_dividend)}<br>
+                                    <small>TDS @10%: {format_currency(tax_breakdown.dividend_tds)} | Net: {format_currency(tax_breakdown.estimated_dividend - tax_breakdown.dividend_tds)}</small>
+                                </div>
+                                """,
+                                unsafe_allow_html=True,
+                            )
+
+                        if tax_breakdown.unrealized_ltcg > 0:
+                            st.markdown(
+                                f"""
+                                <div class="bank-card">
+                                    <strong>Unrealized LTCG (MF):</strong> {format_currency(tax_breakdown.unrealized_ltcg)}<br>
+                                    <small>Tax @12.5% if realized (after ₹1.25L exemption)</small>
+                                </div>
+                                """,
+                                unsafe_allow_html=True,
+                            )
+
+                        # Tax computation
+                        st.markdown("**Tax Computation:**")
+
+                        tax_color = "#4CAF50" if tax_breakdown.total_tax == 0 else "#FF9800"
+                        st.markdown(
+                            f"""
+                            <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px;">
+                                <table style="width: 100%; border-collapse: collapse;">
+                                    <tr><td>Taxable Income:</td><td style="text-align: right;">{format_currency(tax_breakdown.taxable_income)}</td></tr>
+                                    <tr><td>Basic Tax:</td><td style="text-align: right;">{format_currency(tax_breakdown.basic_tax)}</td></tr>
+                                    <tr><td>Surcharge:</td><td style="text-align: right;">{format_currency(tax_breakdown.surcharge)}</td></tr>
+                                    <tr><td>Cess (4%):</td><td style="text-align: right;">{format_currency(tax_breakdown.cess)}</td></tr>
+                                    <tr style="border-top: 1px solid #666;"><td><strong>Total Tax:</strong></td><td style="text-align: right; color: {tax_color};"><strong>{format_currency(tax_breakdown.total_tax)}</strong></td></tr>
+                                    <tr><td>TDS Deducted (Est.):</td><td style="text-align: right;">- {format_currency(tax_breakdown.tds_deducted)}</td></tr>
+                                    <tr style="border-top: 1px solid #666;"><td><strong>Net Payable:</strong></td><td style="text-align: right;"><strong>{format_currency(tax_breakdown.net_tax_payable)}</strong></td></tr>
+                                </table>
+                            </div>
+                            """,
+                            unsafe_allow_html=True,
+                        )
+
+                        # Notes
+                        if tax_breakdown.notes:
+                            st.markdown("**Notes:**")
+                            for note in tax_breakdown.notes:
+                                st.markdown(f"- {note}")
+
+            # Unmapped accounts warning
+            if "UNKNOWN" in aggregated:
+                unknown = aggregated["UNKNOWN"]
+                st.markdown("---")
+                st.warning(
+                    f"""
+                    **⚠️ Unmapped Accounts Found**
+
+                    The following accounts could not be mapped to a PAN:
+                    - Bank Balance: {format_currency(unknown.total_bank_balance)} ({len(unknown.bank_accounts)} accounts)
+                    - Equity Value: {format_currency(unknown.total_equity_value)} ({len(unknown.demat_accounts)} demat accounts)
+
+                    Please update `src/pan_config.py` with the correct holder name mappings.
+                    """
+                )
+
+                # Show unmapped account details
+                with st.expander("View Unmapped Account Details"):
+                    if unknown.bank_accounts:
+                        st.markdown("**Bank Accounts:**")
+                        for acc in unknown.bank_accounts:
+                            st.markdown(f"- {acc['bank']}: {acc['holder_name']} - {format_currency(acc['balance'])}")
+
+                    if unknown.demat_accounts:
+                        st.markdown("**Demat Accounts:**")
+                        for acc in unknown.demat_accounts:
+                            st.markdown(f"- {acc['depository']} ({acc['dp_id']}): {acc['holder_name']} - {format_currency(acc['total_value'])}")
 
     st.markdown("---")
     st.markdown(
