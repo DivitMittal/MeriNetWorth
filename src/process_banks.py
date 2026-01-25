@@ -16,13 +16,13 @@ def parse_idfc_statement(file_path):
         closing_balance = 0.0
 
         for idx, row in df.iterrows():
-            if 'ACCOUNT NUMBER' in str(row[0]):
-                account_number = extract_account_number(row[1])
-            elif 'CUSTOMER NAME' in str(row[0]):
-                holder_name = standardize_holder_name(row[1])
-            elif 'Opening Balance' in str(row[0]) and 'Closing Balance' in str(row[3]):
+            if 'ACCOUNT NUMBER' in str(row.iloc[0]):
+                account_number = extract_account_number(row.iloc[1])
+            elif 'CUSTOMER NAME' in str(row.iloc[0]):
+                holder_name = standardize_holder_name(row.iloc[1])
+            elif 'Opening Balance' in str(row.iloc[0]) and 'Closing Balance' in str(row.iloc[3]):
                 if idx + 1 < len(df):
-                    closing_balance = clean_amount(df.iloc[idx + 1][3])
+                    closing_balance = clean_amount(df.iloc[idx + 1, 3])
                     break
 
         return {
@@ -46,12 +46,12 @@ def parse_equitas_statement(file_path):
         closing_balance = 0.0
 
         for idx, row in df.iterrows():
-            if 'Account Number' in str(row[1]):
-                account_number = extract_account_number(row[7])
-            elif 'Customer Name' in str(row[1]):
-                holder_name = standardize_holder_name(row[2])
-            elif 'Available Balance' in str(row[4]):
-                closing_balance = clean_amount(row[5])
+            if 'Account Number' in str(row.iloc[1]):
+                account_number = extract_account_number(row.iloc[7])
+            elif 'Customer Name' in str(row.iloc[1]):
+                holder_name = standardize_holder_name(row.iloc[2])
+            elif 'Available Balance' in str(row.iloc[4]):
+                closing_balance = clean_amount(row.iloc[5])
 
         if closing_balance == 0.0:
             for idx in range(len(df) - 1, -1, -1):

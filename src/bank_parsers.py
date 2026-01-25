@@ -1,18 +1,8 @@
-import pandas as pd
 from pathlib import Path
-from typing import Dict, Optional
 
+import pandas as pd
 
-def clean_amount(value) -> float:
-    if pd.isna(value):
-        return 0.0
-    if isinstance(value, (int, float)):
-        return float(value)
-    cleaned = str(value).replace("₹", "").replace(",", "").replace("INR", "").strip()
-    try:
-        return float(cleaned)
-    except:
-        return 0.0
+from .utils import clean_amount
 
 
 def extract_account_number(text) -> str:
@@ -31,7 +21,7 @@ def standardize_holder_name(name) -> str:
     return name.strip()
 
 
-def parse_idfc_statement(file_path: Path) -> Optional[Dict]:
+def parse_idfc_statement(file_path: Path) -> dict | None:
     try:
         df = pd.read_excel(file_path, sheet_name="Account Statement")
 
@@ -64,7 +54,7 @@ def parse_idfc_statement(file_path: Path) -> Optional[Dict]:
         return None
 
 
-def parse_equitas_statement(file_path: Path) -> Optional[Dict]:
+def parse_equitas_statement(file_path: Path) -> dict | None:
     try:
         df = pd.read_excel(file_path, sheet_name=0)
 
@@ -119,7 +109,7 @@ def parse_equitas_statement(file_path: Path) -> Optional[Dict]:
         return None
 
 
-def parse_bandhan_statement(file_path: Path) -> Optional[Dict]:
+def parse_bandhan_statement(file_path: Path) -> dict | None:
     try:
         df = pd.read_csv(file_path)
 
@@ -143,7 +133,7 @@ def parse_bandhan_statement(file_path: Path) -> Optional[Dict]:
         return None
 
 
-def parse_icici_statement(file_path: Path) -> Optional[Dict]:
+def parse_icici_statement(file_path: Path) -> dict | None:
     try:
         df_raw = pd.read_excel(file_path, header=None)
 
@@ -231,7 +221,7 @@ def parse_icici_statement(file_path: Path) -> Optional[Dict]:
         return None
 
 
-def parse_indusind_statement(file_path: Path) -> Optional[Dict]:
+def parse_indusind_statement(file_path: Path) -> dict | None:
     try:
         df = pd.read_csv(file_path)
 
@@ -256,7 +246,7 @@ def parse_indusind_statement(file_path: Path) -> Optional[Dict]:
         return None
 
 
-def parse_kotak_statement(file_path: Path) -> Optional[Dict]:
+def parse_kotak_statement(file_path: Path) -> dict | None:
     try:
         with open(file_path, 'r', encoding='utf-8-sig') as f:
             lines = f.readlines()
