@@ -3,7 +3,7 @@
 [![Flake Check](https://github.com/DivitMittal/MeriNetWorth/actions/workflows/flake-check.yml/badge.svg)](https://github.com/DivitMittal/MeriNetWorth/actions/workflows/flake-check.yml)
 [![Flake Lock Update](https://github.com/DivitMittal/MeriNetWorth/actions/workflows/flake-lock-update.yml/badge.svg)](https://github.com/DivitMittal/MeriNetWorth/actions/workflows/flake-lock-update.yml)
 
-Personal net worth tracking system that consolidates financial data from multiple sources (bank accounts, equity holdings, mutual funds) and provides comprehensive visual analytics through an interactive web dashboard.
+Personal net worth tracking system that consolidates financial data from multiple sources (bank accounts, equity holdings, mutual funds, fixed deposits, real estate, pension, and other assets) and provides comprehensive visual analytics through an interactive web dashboard.
 
 ## 1. Overview
 
@@ -12,6 +12,11 @@ This repository contains tools for extracting, consolidating, and visualizing pe
 - **Bank Accounts:** Savings accounts from IDFC First, Equitas, Bandhan, ICICI, IndusInd, Kotak Mahindra
 - **Equity Holdings:** Demat account holdings from CDSL and NSDL depositories
 - **Mutual Funds:** MF Central (Karvy/CAMS) statement of accounts (SOA)
+- **Fixed Income:** Term deposits/FDs from multiple banks
+- **Real Estate:** Property valuations
+- **Pension:** NPS, EPF, PPF accounts
+- **Other Assets:** Cash, precious metals, etc.
+- **Liabilities:** Loans, debts, and receivables
 
 The system employs a two-phase architecture:
 
@@ -20,68 +25,95 @@ The system employs a two-phase architecture:
 
 ### Key Features
 
-✅ **Multi-Asset Tracking**: Banks, equity, and mutual funds in one unified dashboard
+✅ **Multi-Asset Tracking**: Banks, equity, mutual funds, FDs, real estate, pension, and more
 ✅ **Comprehensive Account Info**: Account numbers, first/second holders, and nominee details
 ✅ **Smart Parsing**: Bank-specific extractors with improved reliability for Equitas, ICICI, and Kotak
 ✅ **Visual Analytics**: Interactive charts (pie, bar, treemap, box plot) with Indian currency formatting
-✅ **Tabbed Interface**: Separate views for Banks, Equity, and Mutual Funds
+✅ **Tabbed Interface**: Separate views for Banks, Equity, Mutual Funds, and other assets
 ✅ **Performance Tracking**: MF returns calculation with color-coded gain/loss indicators
 ✅ **Secure Access**: Password-protected dashboard with dark mode support
 ✅ **Real-time Updates**: Equity price sync integration with Upstox API
+✅ **Liabilities Tracking**: Net worth calculation accounting for debts and receivables
 
 ## 2. Project Structure
 
 ```
 /
 ├── data/
-│   └── MM.YY/                        # Monthly data folders (e.g., 10.25)
-│       ├── Bank/                     # Bank statements by institution
-│       │   ├── IDFCFirst/
-│       │   ├── Equitas/
-│       │   ├── Bandhan/
-│       │   ├── ICICI/
-│       │   ├── IndusInd/
-│       │   └── Kotak/
-│       ├── Equity/                   # Equity holdings data
-│       │   ├── cdsl/                 # CDSL demat statements
-│       │   └── nsdl/                 # NSDL demat statements
-│       └── MF/                       # Mutual fund statements
-│           └── mfcentral/            # MF Central (CAMS/Karvy) PDFs
-├── src/                              # Source modules
-│   ├── bank_parsers.py               # Bank-specific parsing functions
-│   ├── equity_parsers.py             # CDSL/NSDL demat statement parsers
-│   ├── mf_parsers.py                 # Mutual fund statement parsers
-│   ├── process_banks.py              # Bank processing orchestration
-│   ├── process_equity.py             # Equity processing logic
-│   └── process_mf.py                 # Mutual fund processing logic
+│   ├── liabilities.csv              # Static liabilities file
+│   └── MM.YY/                       # Monthly data folders (e.g., 10.25)
+│       ├── bank/                    # Bank statements by institution
+│       │   ├── idfc/
+│       │   ├── equitas/
+│       │   ├── bandhan/
+│       │   ├── icici/
+│       │   ├── indusind/
+│       │   └── kotak/
+│       ├── equity/                  # Equity holdings data
+│       │   ├── cdsl/                # CDSL demat statements
+│       │   └── nsdl/                # NSDL demat statements
+│       ├── mf/                      # Mutual fund statements
+│       │   └── mfcentral/           # MF Central (CAMS/Karvy) PDFs
+│       ├── fixed-income/
+│       │   └── term_deposits.csv    # FD/term deposit details
+│       ├── real-estate/
+│       │   └── properties.csv       # Property valuations
+│       ├── pension/
+│       │   └── pension.csv          # NPS/EPF/PPF values
+│       └── others/
+│           └── others.csv           # Other assets (cash, metals, etc.)
+├── src/                             # Source modules
+│   ├── bank_parsers.py              # Bank-specific parsing functions
+│   ├── equity_parsers.py            # CDSL/NSDL demat statement parsers
+│   ├── mf_parsers.py                # Mutual fund statement parsers
+│   ├── fixed_income_parser.py       # Term deposit/FD parser
+│   ├── asset_parsers.py             # Real estate and other assets parser
+│   ├── pension_parser.py            # Pension (NPS/EPF/PPF) parser
+│   ├── liability_parser.py          # Liabilities parser
+│   ├── config.py                    # Centralized path configuration
+│   ├── process_banks.py             # Bank processing orchestration
+│   ├── process_equity.py            # Equity processing logic
+│   └── process_mf.py                # Mutual fund processing logic
 ├── web/
-│   └── app.py                        # Streamlit dashboard application
-├── tests/                            # Test suite
-│   ├── test_parsers.py               # Bank parser tests
-│   └── test_equity.py                # Equity parser tests
-├── scripts/
-│   └── debug/                        # Debug/inspection utilities
-├── output/                           # Generated reports
-│   ├── bank_data.json                # Bank account data (JSON)
-│   ├── equity_data.json              # Equity holdings data (JSON)
-│   ├── mf_data.json                  # Mutual fund data (JSON)
-│   ├── networth_data.json            # Combined net worth data (JSON)
-│   └── Bank-Consolidated-*.xlsx      # Excel consolidated report
-├── process_all.py                    # Main entry point
-├── run_dashboard.sh                  # Dashboard launcher script
-├── requirements.txt                  # Python dependencies
-└── README.md                         # This file
+│   └── app.py                       # Streamlit dashboard application
+├── tests/                           # Test suite
+│   ├── test_parsers.py              # Bank parser tests
+│   └── test_equity.py               # Equity parser tests
+├── config/                          # Configuration files
+│   ├── pan_registry.example.json    # PAN config template
+│   └── pan_registry.private.json    # Private PAN data (git-ignored)
+├── output/                          # Generated reports
+│   ├── bank_data.json               # Bank account data
+│   ├── equity_data.json             # Equity holdings data
+│   ├── mf_data.json                 # Mutual fund data
+│   ├── fixed_income_data.json       # Term deposit data
+│   ├── real_estate_data.json        # Real estate data
+│   ├── pension_data.json            # Pension data
+│   ├── other_assets_data.json       # Other assets data
+│   ├── liabilities_data.json        # Liabilities data
+│   └── networth_data.json           # Combined net worth data
+├── process_all.py                   # Main entry point
+├── run_dashboard.sh                 # Dashboard launcher script
+├── requirements.txt                 # Python dependencies
+└── README.md                        # This file
 ```
 
 ## 3. Dataset
 
-The system processes financial data from three main sources:
+The system processes financial data from multiple sources:
 
-- **Bank Statements** (`data/MM.YY/Bank/`): Organized by bank name, containing Excel/CSV statement exports
-- **Equity Holdings** (`data/MM.YY/Equity/`): CDSL CSV files and NSDL Excel files with demat holdings
-- **Mutual Funds** (`data/MM.YY/MF/`): MF Central PDF statements from CAMS/Karvy
+- **Bank Statements** (`data/MM.YY/bank/`): Organized by bank name, containing Excel/CSV statement exports
+- **Equity Holdings** (`data/MM.YY/equity/`): CDSL CSV files and NSDL Excel files with demat holdings
+- **Mutual Funds** (`data/MM.YY/mf/`): MF Central PDF statements from CAMS/Karvy
+- **Fixed Income** (`data/MM.YY/fixed-income/term_deposits.csv`): Term deposit details with maturity tracking
+- **Real Estate** (`data/MM.YY/real-estate/properties.csv`): Property valuations
+- **Pension** (`data/MM.YY/pension/pension.csv`): NPS, EPF, PPF account values
+- **Other Assets** (`data/MM.YY/others/others.csv`): Cash, precious metals, etc.
+- **Liabilities** (`data/liabilities.csv`): Static file for loans and receivables
 
 All financial data is sensitive and excluded from version control via `.gitignore`.
+
+**IMPORTANT**: Never use `*Consolidated.xlsx` files in `data/` for analytics. These are for personal use only.
 
 ## 4. Components
 
@@ -135,38 +167,89 @@ All financial data is sensitive and excluded from version control via `.gitignor
 |----------|--------|---------------------|
 | MF Central | PDF (.pdf) | PAN, Holder Name, Folios, Scheme Names, Units, NAV, Market Value, Invested Value |
 
-### 4.4. Web Dashboard
+### 4.4. Fixed Income Parser
+
+- **File:** `src/fixed_income_parser.py`
+- **Description:** Parses term deposit/FD data:
+  - FD number and bank identification
+  - Principal amount and interest rate
+  - Inception and maturity dates
+  - Quarterly interest calculation
+  - Holder and nominee information
+
+| Source | Format | Key Fields Extracted |
+|--------|--------|---------------------|
+| Term Deposits | CSV (.csv) | Bank, FD Number, Amount, Interest Rate, Maturity Date, Holders, Quarterly Interest |
+
+### 4.5. Asset Parsers
+
+- **File:** `src/asset_parsers.py`
+- **Description:** Parses real estate and other miscellaneous assets:
+  - Property name and current valuation
+  - Asset categorization
+  - Simple Name/Value CSV format
+
+| Asset Type | Format | Key Fields Extracted |
+|------------|--------|---------------------|
+| Real Estate | CSV (.csv) | Property Name, Current Value |
+| Other Assets | CSV (.csv) | Asset Name, Current Value |
+
+### 4.6. Pension Parser
+
+- **File:** `src/pension_parser.py`
+- **Description:** Parses pension account data:
+  - Account holder identification
+  - Pension type (NPS, EPF, PPF)
+  - Current corpus value
+
+| Source | Format | Key Fields Extracted |
+|--------|--------|---------------------|
+| Pension | CSV (.csv) | Name, Type (NPS/EPF/PPF), Current Value |
+
+### 4.7. Liability Parser
+
+- **File:** `src/liability_parser.py`
+- **Description:** Parses liabilities (loans, debts, receivables):
+  - Beneficiary identification
+  - Amount tracking (INR and foreign currency)
+  - Net liability/receivable calculation
+
+| Source | Format | Key Fields Extracted |
+|--------|--------|---------------------|
+| Liabilities | CSV (.csv) | Date, Beneficiary, Amount (INR), Amount (Euro), Exchange Rate |
+
+### 4.8. Web Dashboard
 
 - **File:** `web/app.py`
 - **Description:** Interactive Streamlit dashboard with tabbed interface providing:
 
-  **Summary Metrics:**
-  - Total Net Worth (combined across all asset types)
-  - Bank Balance, Equity Value, Mutual Fund Value
-  - Account/holdings count by asset type
+  - **Summary Metrics:**
+    - Total Net Worth (combined across all asset types)
+    - Bank Balance, Equity Value, Mutual Fund Value
+    - Account/holdings count by asset type
 
-  **🏦 Banks Tab:**
-  - Bank-wise filtering and account summaries
-  - Visual analytics: Pie charts, sunburst, bar charts, treemaps, box plots
-  - Detailed account information with holder and nominee details
-  - Account details table with First Holder, Second Holder, and Nominee columns
+  - **🏦 Banks Tab:**
+    - Bank-wise filtering and account summaries
+    - Visual analytics: Pie charts, sunburst, bar charts, treemaps, box plots
+    - Detailed account information with holder and nominee details
+    - Account details table with First Holder, Second Holder, and Nominee columns
 
-  **📈 Equity Tab:**
-  - Top holdings table with current valuations
-  - Portfolio distribution charts
-  - Holdings breakdown by depository (CDSL/NSDL)
-  - Price sync integration with Upstox API
+  - **📈 Equity Tab:**
+    - Top holdings table with current valuations
+    - Portfolio distribution charts
+    - Holdings breakdown by depository (CDSL/NSDL)
+    - Price sync integration with Upstox API
 
-  **💰 Mutual Funds Tab:**
-  - Top MF holdings with returns calculation
-  - Performance charts showing gain/loss percentage
-  - Holdings breakdown by PAN/account
-  - Color-coded gain/loss indicators
+  - **💰 Mutual Funds Tab:**
+    - Top MF holdings with returns calculation
+    - Performance charts showing gain/loss percentage
+    - Holdings breakdown by PAN/account
+    - Color-coded gain/loss indicators
 
-  **Other Features:**
-  - Currency formatting in Indian number system (Lakhs/Crores)
-  - Password-protected access
-  - Dark mode optimized UI
+  - **Other Features:**
+    - Currency formatting in Indian number system (Lakhs/Crores)
+    - Password-protected access
+    - Dark mode optimized UI
 
 - **Dependencies:** Streamlit, Plotly, Pandas
 
@@ -190,11 +273,15 @@ python process_all.py
 ```
 
 This will:
-- Parse bank statements from `data/MM.YY/Bank/`
-- Parse equity holdings from `data/MM.YY/Equity/`
-- Parse mutual fund statements from `data/MM.YY/MF/`
-- Extract account balances, portfolio valuations, and MF holdings
-- Generate JSON files: `bank_data.json`, `equity_data.json`, `mf_data.json`, `networth_data.json`
+- Parse bank statements from `data/MM.YY/bank/`
+- Parse equity holdings from `data/MM.YY/equity/`
+- Parse mutual fund statements from `data/MM.YY/mf/`
+- Parse fixed income from `data/MM.YY/fixed-income/`
+- Parse real estate from `data/MM.YY/real-estate/`
+- Parse pension data from `data/MM.YY/pension/`
+- Parse other assets from `data/MM.YY/others/`
+- Parse liabilities from `data/liabilities.csv`
+- Generate JSON files for each asset type in `output/`
 - Create consolidated Excel reports
 
 ### 5.3. Launch Web Dashboard
@@ -254,8 +341,11 @@ def parse_newbank_statement(file_path: Path) -> Optional[Dict]:
 - [x] ~~Mutual fund statement parsing~~ (Completed - MF Central PDF parsing)
 - [x] ~~Equity holdings tracking~~ (Completed - CDSL/NSDL)
 - [x] ~~Holder and nominee information~~ (Completed - Bank parsers)
+- [x] ~~Fixed deposit tracking~~ (Completed - Term deposits parser)
+- [x] ~~Real estate valuation~~ (Completed - Properties parser)
+- [x] ~~Pension tracking~~ (Completed - NPS/EPF/PPF parser)
+- [x] ~~Liabilities tracking~~ (Completed - Loans and receivables)
 - [ ] Historical trend analysis (month-over-month comparisons)
-- [ ] Email report generation with portfolio summary
 - [ ] Automated monthly processing with scheduled runs
 - [ ] FD maturity tracking and alerts
 - [ ] Real-time equity price updates (beyond Upstox)

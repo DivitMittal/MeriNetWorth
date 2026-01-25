@@ -2,10 +2,20 @@
 
 - @docs/
 
-MeriNetWorth is a bank account consolidation system that extracts data from multiple bank statement formats and provides visual analytics through a web dashboard. The system processes statements from IDFC First, Equitas, Bandhan, ICICI, IndusInd, and Kotak Mahindra banks, as well as equity holdings from CDSL and NSDL depositories.
+MeriNetWorth is a comprehensive net worth tracking system that consolidates financial data from multiple sources including bank accounts, equity holdings, mutual funds, fixed deposits, real estate, pension, and other assets. It provides visual analytics through a web dashboard.
 
-**Critical Path**: Bank Statements → Jupyter Notebook → [Excel + JSON] → Streamlit Dashboard
-**Critical Path (Equity)**: Demat Statements (CDSL/NSDL) → Python Processor → [Excel + JSON] → Streamlit Dashboard
+**Supported Asset Types:**
+- **Bank Accounts**: IDFC First, Equitas, Bandhan, ICICI, IndusInd, Kotak Mahindra
+- **Equity Holdings**: CDSL and NSDL depositories
+- **Fixed Income**: Term deposits/FDs from multiple banks
+- **Real Estate**: Property valuations
+- **Pension**: NPS, EPF, PPF accounts
+- **Other Assets**: Cash, precious metals, etc.
+- **Liabilities**: Loans, debts, receivables
+
+**Critical Path**: Source Data → Python Parsers → JSON Output → Streamlit Dashboard
+
+**IMPORTANT**: Never use `*Consolidated.xlsx` files in `data/` for analytics or processing. These files (e.g., `BankConsolidated.xlsx`, `EquityConsolidated.xlsx`, `MFConsolidated.xlsx`, `PensionConsolidated.xlsx`) are for personal use only and should not be parsed or integrated into the system.
 
 ## Development Commands
 
@@ -297,11 +307,154 @@ from pathlib import Path
 
 BASE_PATH = Path(__file__).parent.parent  # Project root
 DATA_PATH = BASE_PATH / 'data' / '10.25'  # Change period suffix as needed
-BANK_PATH = DATA_PATH / 'bank'
 OUTPUT_PATH = BASE_PATH / 'output'
+
+# Period-dependent paths
+BANK_PATH = DATA_PATH / 'bank'
+EQUITY_PATH = DATA_PATH / 'Equity'
+MF_PATH = DATA_PATH / 'MF'
+REAL_ESTATE_PATH = DATA_PATH / 'real-estate'
+OTHER_ASSETS_PATH = DATA_PATH / 'others'
+FIXED_INCOME_PATH = DATA_PATH / 'fixed-income'
+PENSION_PATH = DATA_PATH / 'pension'
+
+# Static paths (not period-dependent)
+LIABILITIES_FILE_PATH = BASE_PATH / 'data' / 'liabilities.csv'
 ```
 
 **Web dashboard** uses same paths in `web/app.py`.
+
+## Data Directory Structure
+
+```
+data/
+├── liabilities.csv              # Static liabilities file
+└── MM.YY/                       # Period-specific data (e.g., 10.25)
+    ├── bank/                    # Bank statements
+    │   ├── idfc/
+    │   ├── equitas/
+    │   ├── kotak/
+    │   ├── bandhan/
+    │   └── icici/
+    ├── equity/                  # Demat statements
+    │   ├── cdsl/
+    │   └── nsdl/
+    ├── mf/                      # Mutual fund statements
+    ├── fixed-income/
+    │   └── term_deposits.csv    # FD details
+    ├── real-estate/
+    │   └── properties.csv       # Property valuations
+    ├── pension/
+    │   └── pension.csv          # NPS/EPF/PPF values
+    └── others/
+        └── others.csv           # Other assets
+```
+
+## Asset Parsers
+
+### Fixed Income Parser (`src/fixed_income_parser.py`)
+
+Parses term deposit/FD data from `data/{period}/fixed-income/term_deposits.csv`.
+
+**Expected CSV columns:**
+- `S.No`, `Bank`, `FD Number`, `Amount`, `Inception Date`, `Maturity Date`
+- `Maturity Instruction`, `Holders`, `Nomination`, `Interest rate`
+- `Quarterly` (quarterly interest), `Interest Payout`
+
+**Usage:**
+```python
+from src.fixed_income_parser import process_fixed_income, save_fixed_income_json
+
+data = process_fixed_income()
+save_fixed_income_json(data)
+```
+
+**Output structure:**
+```python
+{
+    "generated_at": "...",
+    "deposits": [...],
+    "total_principal": 10000000.0,
+    "total_quarterly_interest": 25000.0,
+    "annual_interest_estimate": 100000.0,
+    "deposit_count": 21,
+    "by_bank": {"IDFC FIRST": {...}, "IndusInd": {...}}
+}
+```
+
+### Real Estate Parser (`src/asset_parsers.py`)
+
+Parses property data from `data/{period}/real-estate/properties.csv`.
+
+**Expected CSV format:**
+```csv
+Name, Current Value
+PROPERTY_NAME,₹ 17000000.00
+```
+
+**Usage:**
+```python
+from src.asset_parsers import process_real_estate, save_real_estate_json
+
+data = process_real_estate()
+save_real_estate_json(data)
+```
+
+### Other Assets Parser (`src/asset_parsers.py`)
+
+Parses miscellaneous assets from `data/{period}/others/others.csv`.
+
+**Expected CSV format:**
+```csv
+Name, Current Value
+CASH,₹ 0.00
+SILVER,₹ 3000000.00
+```
+
+**Usage:**
+```python
+from src.asset_parsers import process_other_assets, save_other_assets_json
+
+data = process_other_assets()
+save_other_assets_json(data)
+```
+
+### Pension Parser (`src/pension_parser.py`)
+
+Parses pension account data from `data/{period}/pension/pension.csv`.
+
+**Expected CSV format:**
+```csv
+Name, Type, Current Value
+Ankur NPS,NPS,₹ 500000.00
+Company EPF,EPF,₹ 1000000.00
+```
+
+**Usage:**
+```python
+from src.pension_parser import process_pension, save_pension_json
+
+data = process_pension()
+save_pension_json(data)
+```
+
+### Liability Parser (`src/liability_parser.py`)
+
+Parses liabilities from `data/liabilities.csv` (static, not period-dependent).
+
+**Expected CSV format:**
+```csv
+Date,Beneficiary,Amount (INR),Amount (Euro),Exchange Rate
+2024-01-15,Loan to Friend,-50000,,
+```
+
+**Usage:**
+```python
+from src.liability_parser import process_all_liabilities, save_liabilities_json
+
+data = process_all_liabilities()
+save_liabilities_json(data)
+```
 
 ## Troubleshooting Common Issues
 
@@ -324,8 +477,15 @@ OUTPUT_PATH = BASE_PATH / 'output'
 ## Output Files
 
 ### Generated Files (in `output/`)
-- `bank_data.json`: Web dashboard data source
-- `Bank-Consolidated-Jun'25.xlsx`: Excel report (3 sheets)
+- `bank_data.json`: Bank account balances
+- `equity_data.json`: Equity holdings from CDSL/NSDL
+- `mf_data.json`: Mutual fund holdings
+- `fixed_income_data.json`: Term deposits/FDs
+- `real_estate_data.json`: Property valuations
+- `pension_data.json`: NPS/EPF/PPF values
+- `other_assets_data.json`: Miscellaneous assets
+- `liabilities_data.json`: Loans and receivables
+- `networth_data.json`: Aggregated net worth
 
 ### Expected Console Output Pattern
 ```
