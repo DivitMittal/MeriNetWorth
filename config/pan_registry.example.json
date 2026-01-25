@@ -1,0 +1,35 @@
+{
+  "ABCDE1234F": {
+    "name": "John Doe",
+    "name_variants": [
+      "JOHN DOE",
+      "John Doe",
+      "JOHNDOE"
+    ],
+    "dob": "1990-01-15",
+    "resident_status": "resident",
+    "tax_regime": "new"
+  },
+  "FGHIJ5678K": {
+    "name": "Jane Doe",
+    "name_variants": [
+      "JANE DOE",
+      "Jane Doe",
+      "JANEDOE"
+    ],
+    "dob": "1985-06-20",
+    "resident_status": "resident",
+    "tax_regime": "new"
+  },
+  "KLMNO9012P": {
+    "name": "Family HUF",
+    "name_variants": [
+      "FAMILY HUF",
+      "Family HUF"
+    ],
+    "dob": null,
+    "resident_status": "resident",
+    "tax_regime": "new",
+    "is_huf": true
+  }
+}

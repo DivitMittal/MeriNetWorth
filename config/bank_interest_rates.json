@@ -1,0 +1,134 @@
+{
+  "_metadata": {
+    "description": "Savings account interest rates for Indian banks",
+    "last_updated": "2025-07-15",
+    "source": "Official bank websites and financial portals",
+    "note": "Rates are annual (per annum). Pro-rata calculation done in code.",
+    "references": [
+      "https://www.idfcfirst.bank.in/interest-rate",
+      "https://www.paisabazaar.com/savings-account/interest-rates/",
+      "https://www.kotak811.com/savings-account/interest-rate"
+    ]
+  },
+  "banks": {
+    "IDFC First Bank": {
+      "type": "tiered",
+      "slabs": [
+        {
+          "min_balance": 0,
+          "max_balance": 500000,
+          "rate": 3.5,
+          "comment": "Up to ₹5 lakh"
+        },
+        {
+          "min_balance": 500000,
+          "max_balance": 10000000,
+          "rate": 7.0,
+          "comment": "₹5 lakh to ₹1 crore"
+        },
+        {
+          "min_balance": 10000000,
+          "max_balance": null,
+          "rate": 7.0,
+          "comment": "Above ₹1 crore"
+        }
+      ],
+      "effective_date": "2026-01-09"
+    },
+    "Equitas Small Finance Bank": {
+      "type": "flat",
+      "rate": 5.0,
+      "comment": "Uniform rate across all balances",
+      "effective_date": "2025-01-01"
+    },
+    "Bandhan Bank": {
+      "type": "tiered",
+      "slabs": [
+        {
+          "min_balance": 0,
+          "max_balance": 100000,
+          "rate": 3.5,
+          "comment": "Up to ₹1 lakh"
+        },
+        {
+          "min_balance": 100000,
+          "max_balance": 1000000,
+          "rate": 6.0,
+          "comment": "₹1 lakh to ₹10 lakh"
+        },
+        {
+          "min_balance": 1000000,
+          "max_balance": 20000000,
+          "rate": 7.0,
+          "comment": "₹10 lakh to ₹2 crore"
+        },
+        {
+          "min_balance": 20000000,
+          "max_balance": null,
+          "rate": 7.0,
+          "comment": "Above ₹2 crore"
+        }
+      ],
+      "effective_date": "2025-01-01"
+    },
+    "ICICI Bank": {
+      "type": "tiered",
+      "slabs": [
+        {
+          "min_balance": 0,
+          "max_balance": 1000000,
+          "rate": 3.0,
+          "comment": "Up to ₹10 lakh"
+        },
+        {
+          "min_balance": 1000000,
+          "max_balance": null,
+          "rate": 3.5,
+          "comment": "Above ₹10 lakh"
+        }
+      ],
+      "effective_date": "2025-01-01"
+    },
+    "IndusInd Bank": {
+      "type": "tiered",
+      "slabs": [
+        {
+          "min_balance": 0,
+          "max_balance": 100000,
+          "rate": 2.5,
+          "comment": "Up to ₹1 lakh"
+        },
+        {
+          "min_balance": 100000,
+          "max_balance": 1000000,
+          "rate": 4.0,
+          "comment": "₹1 lakh to ₹10 lakh"
+        },
+        {
+          "min_balance": 1000000,
+          "max_balance": null,
+          "rate": 5.0,
+          "comment": "Above ₹10 lakh"
+        }
+      ],
+      "effective_date": "2025-08-06"
+    },
+    "Kotak Mahindra Bank": {
+      "type": "flat",
+      "rate": 2.5,
+      "comment": "Uniform rate across all balances (effective July 2025)",
+      "effective_date": "2025-07-09"
+    },
+    "_default": {
+      "type": "flat",
+      "rate": 3.0,
+      "comment": "Default rate for banks not explicitly listed"
+    }
+  },
+  "interest_calculation": {
+    "method": "pro_rata",
+    "basis": "daily",
+    "formula": "(Balance × Rate × Days) / (100 × Days_in_Year)",
+    "note": "Interest is calculated on daily balance basis and credited quarterly"
+  }
+}

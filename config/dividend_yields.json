@@ -1,0 +1,188 @@
+{
+  "_comment": "Dividend yield data by ISIN. Update annually or when dividends are announced.",
+  "_format": "ISIN -> { annual_dividend_per_share, dividend_yield_pct, last_updated, notes }",
+  "_source": "Manual entry from BSE/NSE announcements or screener.in",
+
+  "INE040A01034": {
+    "name": "HDFC Bank",
+    "annual_dividend": 19.50,
+    "dividend_yield_pct": 1.2,
+    "last_updated": "2025-06-01",
+    "frequency": "annual"
+  },
+  "INE009A01021": {
+    "name": "Infosys",
+    "annual_dividend": 37.00,
+    "dividend_yield_pct": 2.5,
+    "last_updated": "2025-06-01",
+    "frequency": "annual"
+  },
+  "INE467B01029": {
+    "name": "Tata Consultancy Services",
+    "annual_dividend": 115.00,
+    "dividend_yield_pct": 1.8,
+    "last_updated": "2025-06-01",
+    "frequency": "quarterly"
+  },
+  "INE002A01018": {
+    "name": "Reliance Industries",
+    "annual_dividend": 10.00,
+    "dividend_yield_pct": 0.4,
+    "last_updated": "2025-06-01",
+    "frequency": "annual"
+  },
+  "INE154A01025": {
+    "name": "ITC",
+    "annual_dividend": 15.50,
+    "dividend_yield_pct": 3.2,
+    "last_updated": "2025-06-01",
+    "frequency": "annual"
+  },
+  "INE062A01020": {
+    "name": "State Bank of India",
+    "annual_dividend": 13.70,
+    "dividend_yield_pct": 1.7,
+    "last_updated": "2025-06-01",
+    "frequency": "annual"
+  },
+  "INE090A01021": {
+    "name": "ICICI Bank",
+    "annual_dividend": 10.00,
+    "dividend_yield_pct": 0.8,
+    "last_updated": "2025-06-01",
+    "frequency": "annual"
+  },
+  "INE585B01010": {
+    "name": "Maruti Suzuki",
+    "annual_dividend": 125.00,
+    "dividend_yield_pct": 1.1,
+    "last_updated": "2025-06-01",
+    "frequency": "annual"
+  },
+  "INE030A01027": {
+    "name": "Hindustan Unilever",
+    "annual_dividend": 44.00,
+    "dividend_yield_pct": 1.6,
+    "last_updated": "2025-06-01",
+    "frequency": "bi-annual"
+  },
+  "INE001A01036": {
+    "name": "HDFC Life Insurance",
+    "annual_dividend": 2.00,
+    "dividend_yield_pct": 0.3,
+    "last_updated": "2025-06-01",
+    "frequency": "annual"
+  },
+  "INE238A01034": {
+    "name": "Axis Bank",
+    "annual_dividend": 1.00,
+    "dividend_yield_pct": 0.1,
+    "last_updated": "2025-06-01",
+    "frequency": "annual"
+  },
+  "INE176A01028": {
+    "name": "Bajaj Finance",
+    "annual_dividend": 36.00,
+    "dividend_yield_pct": 0.5,
+    "last_updated": "2025-06-01",
+    "frequency": "annual"
+  },
+  "INE018A01030": {
+    "name": "Larsen & Toubro",
+    "annual_dividend": 28.00,
+    "dividend_yield_pct": 0.8,
+    "last_updated": "2025-06-01",
+    "frequency": "annual"
+  },
+  "INE081A01012": {
+    "name": "Dr. Reddy's Laboratories",
+    "annual_dividend": 40.00,
+    "dividend_yield_pct": 0.7,
+    "last_updated": "2025-06-01",
+    "frequency": "annual"
+  },
+  "INE117A01022": {
+    "name": "Asian Paints",
+    "annual_dividend": 28.15,
+    "dividend_yield_pct": 1.0,
+    "last_updated": "2025-06-01",
+    "frequency": "annual"
+  },
+  "INE021A01026": {
+    "name": "Nestle India",
+    "annual_dividend": 275.00,
+    "dividend_yield_pct": 1.2,
+    "last_updated": "2025-06-01",
+    "frequency": "bi-annual"
+  },
+  "INE860A01027": {
+    "name": "HCL Technologies",
+    "annual_dividend": 52.00,
+    "dividend_yield_pct": 3.5,
+    "last_updated": "2025-06-01",
+    "frequency": "quarterly"
+  },
+  "INE028A01039": {
+    "name": "Wipro",
+    "annual_dividend": 6.00,
+    "dividend_yield_pct": 1.2,
+    "last_updated": "2025-06-01",
+    "frequency": "annual"
+  },
+  "INE066A01021": {
+    "name": "Coal India",
+    "annual_dividend": 24.25,
+    "dividend_yield_pct": 5.5,
+    "last_updated": "2025-06-01",
+    "frequency": "annual"
+  },
+  "INE134E01011": {
+    "name": "Power Grid Corporation",
+    "annual_dividend": 15.00,
+    "dividend_yield_pct": 4.5,
+    "last_updated": "2025-06-01",
+    "frequency": "annual"
+  },
+  "INE752E01010": {
+    "name": "Power Finance Corporation",
+    "annual_dividend": 17.50,
+    "dividend_yield_pct": 3.8,
+    "last_updated": "2025-06-01",
+    "frequency": "annual"
+  },
+  "INE101A01026": {
+    "name": "NTPC",
+    "annual_dividend": 8.25,
+    "dividend_yield_pct": 2.2,
+    "last_updated": "2025-06-01",
+    "frequency": "annual"
+  },
+  "INE114A01011": {
+    "name": "Grasim Industries",
+    "annual_dividend": 15.00,
+    "dividend_yield_pct": 0.6,
+    "last_updated": "2025-06-01",
+    "frequency": "annual"
+  },
+  "INE042A01014": {
+    "name": "Tech Mahindra",
+    "annual_dividend": 28.00,
+    "dividend_yield_pct": 1.9,
+    "last_updated": "2025-06-01",
+    "frequency": "annual"
+  },
+  "INE155A01022": {
+    "name": "Tata Motors",
+    "annual_dividend": 6.00,
+    "dividend_yield_pct": 0.7,
+    "last_updated": "2025-06-01",
+    "frequency": "annual"
+  },
+  "INE239A01016": {
+    "name": "Britannia Industries",
+    "annual_dividend": 83.50,
+    "dividend_yield_pct": 1.5,
+    "last_updated": "2025-06-01",
+    "frequency": "annual"
+  }
+}
