@@ -24,6 +24,9 @@ output/
 # Streamlit secrets (contains passwords)
 .streamlit/secrets.toml
 
+# Private config files (contain personal data like PAN, DOB)
+config/*.private.json
+
 # IDE
 .vscode/
 .idea/
