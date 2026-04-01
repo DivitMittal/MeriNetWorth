@@ -1,10 +1,14 @@
-from pathlib import Path
 import json
 from datetime import datetime
-from equity_parsers import parse_cdsl_statement, parse_nsdl_statement, consolidate_equity_data
-from upstox_api import create_upstox_client
-from src.config import BASE_PATH, DATA_PATH, EQUITY_PATH, OUTPUT_PATH
-import os
+from pathlib import Path
+
+try:
+    from .equity_parsers import consolidate_equity_data, parse_cdsl_statement, parse_nsdl_statement
+    from .upstox_api import create_upstox_client
+except ImportError:
+    from equity_parsers import consolidate_equity_data, parse_cdsl_statement, parse_nsdl_statement
+    from upstox_api import create_upstox_client
+from src.config import EQUITY_PATH, OUTPUT_PATH
 
 
 def process_all_equity_statements(equity_path: Path, sync_prices: bool = False):
@@ -19,7 +23,9 @@ def process_all_equity_statements(equity_path: Path, sync_prices: bool = False):
             result = parse_cdsl_statement(file_path)
             if result:
                 all_accounts.append(result)
-                print(f"  {file_path.name}: {result['total_value']:,.2f} ({result['total_holdings']} holdings)")
+                print(
+                    f"  {file_path.name}: {result['total_value']:,.2f} ({result['total_holdings']} holdings)"
+                )
     else:
         print(f"  CDSL path not found: {cdsl_path}")
 
@@ -37,7 +43,9 @@ def process_all_equity_statements(equity_path: Path, sync_prices: bool = False):
             result = parse_nsdl_statement(file_path)
             if result:
                 all_accounts.append(result)
-                print(f"  {file_path.name}: {result['total_value']:,.2f} ({result['total_holdings']} holdings)")
+                print(
+                    f"  {file_path.name}: {result['total_value']:,.2f} ({result['total_holdings']} holdings)"
+                )
     else:
         print(f"  NSDL path not found: {nsdl_path}")
 
@@ -114,8 +122,6 @@ def combine_bank_and_equity_data(bank_data: dict, equity_data: dict, output_path
 
 
 if __name__ == "__main__":
-    equity_data = process_all_equity_statements(
-        equity_path=EQUITY_PATH, sync_prices=False
-    )
+    equity_data = process_all_equity_statements(equity_path=EQUITY_PATH, sync_prices=False)
 
     save_equity_json(equity_data, OUTPUT_PATH)

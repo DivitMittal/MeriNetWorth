@@ -1,8 +1,12 @@
-from pathlib import Path
 import json
 from datetime import datetime
-from mf_parsers import parse_mf_statement, consolidate_mf_data
-from src.config import BASE_PATH, DATA_PATH, MF_PATH, OUTPUT_PATH
+from pathlib import Path
+
+try:
+    from .mf_parsers import consolidate_mf_data, parse_mf_statement
+except ImportError:
+    from mf_parsers import consolidate_mf_data, parse_mf_statement
+from src.config import MF_PATH, OUTPUT_PATH
 
 
 def process_all_mf_statements(mf_path: Path):
@@ -26,7 +30,9 @@ def process_all_mf_statements(mf_path: Path):
             all_accounts.append(result)
             print(f"  {file_path.name}: {result['holder_name']}")
             print(f"     SoA: {result['soa_value']:,.2f} ({len(result['soa_holdings'])} holdings)")
-            print(f"     Demat: {result['demat_value']:,.2f} ({len(result['demat_holdings'])} holdings)")
+            print(
+                f"     Demat: {result['demat_value']:,.2f} ({len(result['demat_holdings'])} holdings)"
+            )
             print(f"     Total: {result['total_value']:,.2f}")
 
     print(f"\nTotal MF accounts processed: {len(all_accounts)}\n")
