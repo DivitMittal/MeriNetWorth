@@ -1,21 +1,35 @@
-import streamlit as st
-import pandas as pd
-import json
-from pathlib import Path
-import plotly.express as px
-import plotly.graph_objects as go
-from datetime import datetime
 import hmac
+import json
 import os
 import sys
+from datetime import datetime
+from pathlib import Path
+
+import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
+import streamlit as st
 
 sys.path.append(str(Path(__file__).parent.parent))
 
-from src.config import OUTPUT_PATH, DATA_FILE, EQUITY_FILE, NETWORTH_FILE, LIABILITIES_FILE, PENSION_FILE, FIXED_INCOME_FILE, REAL_ESTATE_FILE, OTHER_ASSETS_FILE
-from src.pan_config import get_holder_info, get_all_pans, get_holder_name
-from src.asset_aggregator import aggregate_by_pan, AggregatedAssets
-from src.tax_computation import compute_tax_for_individual, TaxBreakdown
-from src.dividend_estimator import estimate_dividends_by_pan, DividendSummary
+from src.asset_aggregator import aggregate_by_pan
+from src.config import (
+    DATA_FILE,
+    EQUITY_FILE,
+    EQUITY_PATH,
+    FIXED_INCOME_FILE,
+    HISTORY_FILE,
+    LIABILITIES_FILE,
+    NETWORTH_FILE,
+    OTHER_ASSETS_FILE,
+    OUTPUT_PATH,
+    PENSION_FILE,
+    PLANNING_FILE,
+    REAL_ESTATE_FILE,
+)
+from src.dividend_estimator import estimate_dividends_by_pan
+from src.pan_config import get_holder_info
+from src.tax_computation import compute_tax_for_individual
 
 st.set_page_config(
     page_title="MeriNetWorth - Complete Dashboard",
@@ -111,7 +125,7 @@ def load_data():
     if not DATA_FILE.exists():
         return None
 
-    with open(DATA_FILE, "r") as f:
+    with open(DATA_FILE) as f:
         return json.load(f)
 
 
@@ -120,7 +134,7 @@ def load_equity_data():
     if not EQUITY_FILE.exists():
         return None
 
-    with open(EQUITY_FILE, "r") as f:
+    with open(EQUITY_FILE) as f:
         return json.load(f)
 
 
@@ -129,7 +143,7 @@ def load_networth_data():
     if not NETWORTH_FILE.exists():
         return None
 
-    with open(NETWORTH_FILE, "r") as f:
+    with open(NETWORTH_FILE) as f:
         return json.load(f)
 
 
@@ -139,7 +153,7 @@ def load_mf_data():
     if not mf_file.exists():
         return None
 
-    with open(mf_file, "r") as f:
+    with open(mf_file) as f:
         return json.load(f)
 
 
@@ -148,7 +162,7 @@ def load_liabilities_data():
     if not LIABILITIES_FILE.exists():
         return None
 
-    with open(LIABILITIES_FILE, "r") as f:
+    with open(LIABILITIES_FILE) as f:
         return json.load(f)
 
 
@@ -156,7 +170,7 @@ def load_liabilities_data():
 def load_pension_data():
     if not PENSION_FILE.exists():
         return None
-    with open(PENSION_FILE, "r") as f:
+    with open(PENSION_FILE) as f:
         return json.load(f)
 
 
@@ -164,7 +178,7 @@ def load_pension_data():
 def load_fixed_income_data():
     if not FIXED_INCOME_FILE.exists():
         return None
-    with open(FIXED_INCOME_FILE, "r") as f:
+    with open(FIXED_INCOME_FILE) as f:
         return json.load(f)
 
 
@@ -172,7 +186,7 @@ def load_fixed_income_data():
 def load_real_estate_data():
     if not REAL_ESTATE_FILE.exists():
         return None
-    with open(REAL_ESTATE_FILE, "r") as f:
+    with open(REAL_ESTATE_FILE) as f:
         return json.load(f)
 
 
@@ -180,16 +194,31 @@ def load_real_estate_data():
 def load_other_assets_data():
     if not OTHER_ASSETS_FILE.exists():
         return None
-    with open(OTHER_ASSETS_FILE, "r") as f:
+    with open(OTHER_ASSETS_FILE) as f:
         return json.load(f)
 
+
+@st.cache_data
+def load_planning_data():
+    if not PLANNING_FILE.exists():
+        return None
+    with open(PLANNING_FILE) as f:
+        return json.load(f)
+
+
+@st.cache_data
+def load_history_data():
+    if not HISTORY_FILE.exists():
+        return []
+    with open(HISTORY_FILE) as f:
+        return json.load(f)
 
 
 def format_currency(amount):
     if amount >= 10000000:
-        return f"₹{amount/10000000:.2f} Cr"
+        return f"₹{amount / 10000000:.2f} Cr"
     elif amount >= 100000:
-        return f"₹{amount/100000:.2f} L"
+        return f"₹{amount / 100000:.2f} L"
     else:
         return f"₹{amount:,.2f}"
 
@@ -200,7 +229,8 @@ def filter_by_search(items: list, search_query: str, search_fields: list) -> tup
 
     search_lower = search_query.lower()
     filtered = [
-        item for item in items
+        item
+        for item in items
         if any(search_lower in str(item.get(field, "")).lower() for field in search_fields)
     ]
     return filtered, len(filtered) > 0
@@ -218,19 +248,14 @@ def limit_results(items: list, limit: int, is_searching: bool) -> list:
 
 
 def sync_equity_prices():
-    import sys
-
-    sys.path.append(str(BASE_PATH / "src"))
-
     try:
-        from process_equity import (
+        from src.process_equity import (
+            combine_bank_and_equity_data,
             process_all_equity_statements,
             save_equity_json,
-            combine_bank_and_equity_data,
         )
 
-        equity_path = BASE_PATH / "data" / "10.25" / "equity"
-        equity_data = process_all_equity_statements(equity_path, sync_prices=True)
+        equity_data = process_all_equity_statements(EQUITY_PATH, sync_prices=True)
 
         save_equity_json(equity_data, OUTPUT_PATH)
 
@@ -261,12 +286,14 @@ def main():
     data = load_data()
     equity_data = load_equity_data()
     mf_data = load_mf_data()
-    networth_data = load_networth_data()
+    load_networth_data()
     liabilities_data = load_liabilities_data()
     pension_data = load_pension_data()
     fixed_income_data = load_fixed_income_data()
     real_estate_data = load_real_estate_data()
     other_assets_data = load_other_assets_data()
+    planning_data = load_planning_data()
+    history_data = load_history_data()
 
     if data is None:
         st.error(
@@ -288,9 +315,15 @@ def main():
         selected_banks = st.multiselect("Select Banks", options=banks, default=banks)
 
         st.markdown("### Search")
-        search_bank = st.text_input("Bank Search", placeholder="Account, holder, or bank name...", key="search_bank")
-        search_equity = st.text_input("Equity Search", placeholder="Security name or ISIN...", key="search_equity")
-        search_mf = st.text_input("MF Search", placeholder="Scheme name or folio...", key="search_mf")
+        search_bank = st.text_input(
+            "Bank Search", placeholder="Account, holder, or bank name...", key="search_bank"
+        )
+        search_equity = st.text_input(
+            "Equity Search", placeholder="Security name or ISIN...", key="search_equity"
+        )
+        search_mf = st.text_input(
+            "MF Search", placeholder="Scheme name or folio...", key="search_mf"
+        )
 
         st.markdown("### View Options")
         show_accounts = st.checkbox("Show Account Details", value=True)
@@ -355,7 +388,6 @@ def main():
 
     col1, col2, col3, col4, col5 = st.columns(5)
 
-
     with col1:
         st.markdown(
             f"""
@@ -372,7 +404,7 @@ def main():
             f"""
         <div class="metric-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
             <h3>Bank Balance</h3>
-            <h2>{format_currency(data['total_balance'])}</h2>
+            <h2>{format_currency(data["total_balance"])}</h2>
         </div>
         """,
             unsafe_allow_html=True,
@@ -401,7 +433,6 @@ def main():
         )
 
     with col5:
-        liability_color = "#ff6b6b" if total_liabilities > 0 else "#4CAF50"
         st.markdown(
             f"""
         <div class="metric-card" style="background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);">
@@ -414,15 +445,45 @@ def main():
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    tab_bank, tab_equity, tab_mf, tab_pension, tab_fixed_income, tab_real_estate, tab_other, tab_liabilities, tab_tax = st.tabs([
-        "Banks", "Equity", "Mutual Funds", "Pension", "Fixed Income", "Real Estate", "Other Assets", "Liabilities", "Tax Computation"
-    ])
+    (
+        tab_bank,
+        tab_equity,
+        tab_mf,
+        tab_pension,
+        tab_fixed_income,
+        tab_real_estate,
+        tab_other,
+        tab_liabilities,
+        tab_tax,
+        tab_planning,
+    ) = st.tabs(
+        [
+            "Banks",
+            "Equity",
+            "Mutual Funds",
+            "Pension",
+            "Fixed Income",
+            "Real Estate",
+            "Other Assets",
+            "Liabilities",
+            "Tax Computation",
+            "Planning",
+        ]
+    )
 
     with tab_bank:
         filtered_accounts = [acc for acc in data["accounts"] if acc["bank"] in selected_banks]
 
-        bank_search_fields = ["account_number", "holder_name", "first_holder", "second_holder", "bank"]
-        filtered_accounts, has_results = filter_by_search(filtered_accounts, search_bank, bank_search_fields)
+        bank_search_fields = [
+            "account_number",
+            "holder_name",
+            "first_holder",
+            "second_holder",
+            "bank",
+        ]
+        filtered_accounts, has_results = filter_by_search(
+            filtered_accounts, search_bank, bank_search_fields
+        )
 
         if search_bank:
             display_search_results(len(filtered_accounts), search_bank, "account")
@@ -432,92 +493,99 @@ def main():
 
             tab1, tab2, tab3 = st.tabs(["Distribution", "Comparison", "Details"])
 
-            with tab1:
-                col1, col2 = st.columns(2)
+            if not filtered_accounts:
+                st.info("No bank accounts match the current filters.")
+            else:
+                with tab1:
+                    col1, col2 = st.columns(2)
 
-                with col1:
-                    bank_balances = {
-                        bank: sum([acc["balance"] for acc in filtered_accounts if acc["bank"] == bank])
-                        for bank in selected_banks
-                    }
+                    with col1:
+                        bank_balances = {
+                            bank: sum(
+                                acc["balance"] for acc in filtered_accounts if acc["bank"] == bank
+                            )
+                            for bank in selected_banks
+                        }
 
-                    fig = px.pie(
-                        values=list(bank_balances.values()),
-                        names=list(bank_balances.keys()),
-                        title="Balance Distribution by Bank",
-                        hole=0.4,
-                        color_discrete_sequence=px.colors.qualitative.Set3,
+                        fig = px.pie(
+                            values=list(bank_balances.values()),
+                            names=list(bank_balances.keys()),
+                            title="Balance Distribution by Bank",
+                            hole=0.4,
+                            color_discrete_sequence=px.colors.qualitative.Set3,
+                        )
+                        fig.update_traces(textposition="inside", textinfo="percent+label")
+                        st.plotly_chart(fig, use_container_width=True)
+
+                    with col2:
+                        df_accounts = pd.DataFrame(filtered_accounts)
+                        fig = px.sunburst(
+                            df_accounts,
+                            path=["bank", "account_number"],
+                            values="balance",
+                            title="Account Hierarchy",
+                            color="balance",
+                            color_continuous_scale="Viridis",
+                        )
+                        st.plotly_chart(fig, use_container_width=True)
+
+                with tab2:
+                    bank_data = []
+                    for bank in selected_banks:
+                        balance = sum(
+                            acc["balance"] for acc in filtered_accounts if acc["bank"] == bank
+                        )
+                        accounts = len([acc for acc in filtered_accounts if acc["bank"] == bank])
+                        bank_data.append({"Bank": bank, "Balance": balance, "Accounts": accounts})
+
+                    df_banks = pd.DataFrame(bank_data)
+
+                    fig = go.Figure(
+                        data=[
+                            go.Bar(
+                                name="Balance",
+                                x=df_banks["Bank"],
+                                y=df_banks["Balance"],
+                                marker_color="indianred",
+                            ),
+                            go.Bar(
+                                name="Accounts (x10000)",
+                                x=df_banks["Bank"],
+                                y=df_banks["Accounts"] * 10000,
+                                marker_color="lightseagreen",
+                            ),
+                        ]
                     )
-                    fig.update_traces(textposition="inside", textinfo="percent+label")
+                    fig.update_layout(
+                        title="Balance vs Number of Accounts by Bank",
+                        barmode="group",
+                        xaxis_title="Bank",
+                        yaxis_title="Amount (₹)",
+                    )
                     st.plotly_chart(fig, use_container_width=True)
 
-                with col2:
                     df_accounts = pd.DataFrame(filtered_accounts)
-                    fig = px.sunburst(
+                    fig = px.treemap(
                         df_accounts,
-                        path=["bank", "account_number"],
+                        path=["bank", "holder_name", "account_number"],
                         values="balance",
-                        title="Account Hierarchy",
+                        title="Balance Treemap",
                         color="balance",
-                        color_continuous_scale="Viridis",
+                        color_continuous_scale="RdYlGn",
                     )
                     st.plotly_chart(fig, use_container_width=True)
 
-            with tab2:
-                bank_data = []
-                for bank in selected_banks:
-                    balance = sum([acc["balance"] for acc in filtered_accounts if acc["bank"] == bank])
-                    accounts = len([acc for acc in filtered_accounts if acc["bank"] == bank])
-                    bank_data.append({"Bank": bank, "Balance": balance, "Accounts": accounts})
-
-                df_banks = pd.DataFrame(bank_data)
-
-                fig = go.Figure(
-                    data=[
-                        go.Bar(
-                            name="Balance",
-                            x=df_banks["Bank"],
-                            y=df_banks["Balance"],
-                            marker_color="indianred",
-                        ),
-                        go.Bar(
-                            name="Accounts (x10000)",
-                            x=df_banks["Bank"],
-                            y=df_banks["Accounts"] * 10000,
-                            marker_color="lightseagreen",
-                        ),
-                    ]
-                )
-                fig.update_layout(
-                    title="Balance vs Number of Accounts by Bank",
-                    barmode="group",
-                    xaxis_title="Bank",
-                    yaxis_title="Amount (₹)",
-                )
-                st.plotly_chart(fig, use_container_width=True)
-
-                df_accounts = pd.DataFrame(filtered_accounts)
-                fig = px.treemap(
-                    df_accounts,
-                    path=["bank", "holder_name", "account_number"],
-                    values="balance",
-                    title="Balance Treemap",
-                    color="balance",
-                    color_continuous_scale="RdYlGn",
-                )
-                st.plotly_chart(fig, use_container_width=True)
-
-            with tab3:
-                df_accounts = pd.DataFrame(filtered_accounts)
-                fig = px.box(
-                    df_accounts,
-                    x="bank",
-                    y="balance",
-                    title="Balance Distribution by Bank",
-                    color="bank",
-                    points="all",
-                )
-                st.plotly_chart(fig, use_container_width=True)
+                with tab3:
+                    df_accounts = pd.DataFrame(filtered_accounts)
+                    fig = px.box(
+                        df_accounts,
+                        x="bank",
+                        y="balance",
+                        title="Balance Distribution by Bank",
+                        color="bank",
+                        points="all",
+                    )
+                    st.plotly_chart(fig, use_container_width=True)
 
         st.markdown("## Bank-wise Summary")
 
@@ -526,26 +594,33 @@ def main():
             total = sum([acc["balance"] for acc in bank_accounts])
 
             with st.expander(
-                f"**{bank}** - {format_currency(total)} ({len(bank_accounts)} accounts)", expanded=False
+                f"**{bank}** - {format_currency(total)} ({len(bank_accounts)} accounts)",
+                expanded=False,
             ):
                 for acc in bank_accounts:
                     holder_info = []
-                    if acc.get('first_holder'):
+                    if acc.get("first_holder"):
                         holder_info.append(f"<strong>First Holder:</strong> {acc['first_holder']}")
-                    if acc.get('second_holder'):
-                        holder_info.append(f"<strong>Second Holder:</strong> {acc['second_holder']}")
-                    if acc.get('nominee'):
+                    if acc.get("second_holder"):
+                        holder_info.append(
+                            f"<strong>Second Holder:</strong> {acc['second_holder']}"
+                        )
+                    if acc.get("nominee"):
                         holder_info.append(f"<strong>Nominee:</strong> {acc['nominee']}")
 
-                    holder_html = "<br>".join(holder_info) if holder_info else f"<strong>Holder:</strong> {acc.get('holder_name') or 'N/A'}"
+                    holder_html = (
+                        "<br>".join(holder_info)
+                        if holder_info
+                        else f"<strong>Holder:</strong> {acc.get('holder_name') or 'N/A'}"
+                    )
 
                     st.markdown(
                         f"""
                     <div class="bank-card">
-                        <strong>Account:</strong> {acc['account_number']}<br>
+                        <strong>Account:</strong> {acc["account_number"]}<br>
                         {holder_html}<br>
-                        <strong>Balance:</strong> <span style="color: green; font-weight: bold;">{format_currency(acc['balance'])}</span><br>
-                        <small style="color: #666;">Source: {acc['source_file']}</small>
+                        <strong>Balance:</strong> <span style="color: green; font-weight: bold;">{format_currency(acc["balance"])}</span><br>
+                        <small style="color: #666;">Source: {acc["source_file"]}</small>
                     </div>
                     """,
                         unsafe_allow_html=True,
@@ -594,7 +669,9 @@ def main():
 
                 holdings_list = equity_data["consolidated_holdings"]
                 equity_search_fields = ["name", "isin"]
-                holdings_list, has_results = filter_by_search(holdings_list, search_equity, equity_search_fields)
+                holdings_list, has_results = filter_by_search(
+                    holdings_list, search_equity, equity_search_fields
+                )
 
                 if search_equity:
                     display_search_results(len(holdings_list), search_equity, "holding")
@@ -604,7 +681,9 @@ def main():
                 df_holdings = pd.DataFrame(holdings_list)
 
                 df_holdings["value_display"] = df_holdings["total_value"].apply(format_currency)
-                df_holdings["price_display"] = df_holdings["last_price"].apply(lambda x: f"₹{x:,.2f}")
+                df_holdings["price_display"] = df_holdings["last_price"].apply(
+                    lambda x: f"₹{x:,.2f}"
+                )
                 df_holdings["qty_display"] = df_holdings["total_quantity"].apply(
                     lambda x: f"{int(x):,}"
                 )
@@ -645,11 +724,11 @@ def main():
                                 st.markdown(
                                     f"""
                                 <div class="bank-card">
-                                    <strong>{holding.get('name', 'N/A')}</strong><br>
-                                    ISIN: {holding.get('isin', 'N/A')}<br>
-                                    Quantity: {int(holding.get('quantity', 0)):,} |
-                                    LTP: ₹{holding.get('last_price', 0):,.2f} |
-                                    Value: <span style="color: green; font-weight: bold;">{format_currency(holding.get('value', 0))}</span>
+                                    <strong>{holding.get("name", "N/A")}</strong><br>
+                                    ISIN: {holding.get("isin", "N/A")}<br>
+                                    Quantity: {int(holding.get("quantity", 0)):,} |
+                                    LTP: ₹{holding.get("last_price", 0):,.2f} |
+                                    Value: <span style="color: green; font-weight: bold;">{format_currency(holding.get("value", 0))}</span>
                                 </div>
                                 """,
                                     unsafe_allow_html=True,
@@ -673,18 +752,22 @@ def main():
                 all_holdings = []
                 for account in mf_data["accounts"]:
                     for holding in account.get("soa_holdings", []):
-                        all_holdings.append({
-                            "scheme": holding.get("scheme", ""),
-                            "folio": holding.get("folio", ""),
-                            "units": holding.get("units", 0),
-                            "nav": holding.get("nav", 0),
-                            "market_value": holding.get("market_value", 0),
-                            "invested_value": holding.get("invested_value", 0),
-                        })
+                        all_holdings.append(
+                            {
+                                "scheme": holding.get("scheme", ""),
+                                "folio": holding.get("folio", ""),
+                                "units": holding.get("units", 0),
+                                "nav": holding.get("nav", 0),
+                                "market_value": holding.get("market_value", 0),
+                                "invested_value": holding.get("invested_value", 0),
+                            }
+                        )
 
                 if all_holdings:
                     mf_search_fields = ["scheme", "folio"]
-                    all_holdings, has_results = filter_by_search(all_holdings, search_mf, mf_search_fields)
+                    all_holdings, has_results = filter_by_search(
+                        all_holdings, search_mf, mf_search_fields
+                    )
 
                     if search_mf:
                         display_search_results(len(all_holdings), search_mf, "holding")
@@ -700,11 +783,35 @@ def main():
                     df_mf["invested_display"] = df_mf["invested_value"].apply(format_currency)
                     df_mf["nav_display"] = df_mf["nav"].apply(lambda x: f"₹{x:,.2f}")
                     df_mf["units_display"] = df_mf["units"].apply(lambda x: f"{x:,.2f}")
-                    df_mf["gain"] = ((df_mf["market_value"] - df_mf["invested_value"]) / df_mf["invested_value"] * 100).apply(lambda x: f"{x:+.2f}%")
+                    df_mf["gain_pct"] = df_mf.apply(
+                        lambda row: (
+                            (row["market_value"] - row["invested_value"])
+                            / row["invested_value"]
+                            * 100
+                            if row["invested_value"] > 0
+                            else 0
+                        ),
+                        axis=1,
+                    )
+                    df_mf["gain"] = df_mf["gain_pct"].apply(lambda x: f"{x:+.2f}%")
 
-                    display_cols = ["scheme", "units_display", "nav_display", "invested_display", "value_display", "gain"]
+                    display_cols = [
+                        "scheme",
+                        "units_display",
+                        "nav_display",
+                        "invested_display",
+                        "value_display",
+                        "gain",
+                    ]
                     display_df = df_mf[display_cols]
-                    display_df.columns = ["Scheme Name", "Units", "NAV", "Invested", "Current Value", "Returns"]
+                    display_df.columns = [
+                        "Scheme Name",
+                        "Units",
+                        "NAV",
+                        "Invested",
+                        "Current Value",
+                        "Returns",
+                    ]
 
                     st.dataframe(display_df, use_container_width=True, hide_index=True)
 
@@ -720,7 +827,16 @@ def main():
                         st.plotly_chart(fig, use_container_width=True)
 
                     top_10 = df_mf.head(10).copy()
-                    top_10["gain_pct"] = ((top_10["market_value"] - top_10["invested_value"]) / top_10["invested_value"] * 100)
+                    top_10["gain_pct"] = top_10.apply(
+                        lambda row: (
+                            (row["market_value"] - row["invested_value"])
+                            / row["invested_value"]
+                            * 100
+                            if row["invested_value"] > 0
+                            else 0
+                        ),
+                        axis=1,
+                    )
 
                     fig = px.bar(
                         top_10,
@@ -748,18 +864,24 @@ def main():
                     with st.expander(f"{title} - {subtitle}", expanded=False):
                         if soa_holdings:
                             for holding in soa_holdings:
-                                gain = holding.get("market_value", 0) - holding.get("invested_value", 0)
-                                gain_pct = (gain / holding.get("invested_value", 1)) * 100 if holding.get("invested_value", 0) > 0 else 0
+                                gain = holding.get("market_value", 0) - holding.get(
+                                    "invested_value", 0
+                                )
+                                gain_pct = (
+                                    (gain / holding.get("invested_value", 1)) * 100
+                                    if holding.get("invested_value", 0) > 0
+                                    else 0
+                                )
                                 gain_color = "green" if gain >= 0 else "red"
 
                                 st.markdown(
                                     f"""
                                 <div class="bank-card">
-                                    <strong>{holding.get('scheme', 'N/A')}</strong><br>
-                                    Folio: {holding.get('folio', 'N/A')} | Units: {holding.get('units', 0):,.2f}<br>
-                                    NAV: ₹{holding.get('nav', 0):,.2f} (as of {holding.get('nav_date', 'N/A')})<br>
-                                    Invested: {format_currency(holding.get('invested_value', 0))} |
-                                    Current: <span style="color: green; font-weight: bold;">{format_currency(holding.get('market_value', 0))}</span><br>
+                                    <strong>{holding.get("scheme", "N/A")}</strong><br>
+                                    Folio: {holding.get("folio", "N/A")} | Units: {holding.get("units", 0):,.2f}<br>
+                                    NAV: ₹{holding.get("nav", 0):,.2f} (as of {holding.get("nav_date", "N/A")})<br>
+                                    Invested: {format_currency(holding.get("invested_value", 0))} |
+                                    Current: <span style="color: green; font-weight: bold;">{format_currency(holding.get("market_value", 0))}</span><br>
                                     Gain: <span style="color: {gain_color}; font-weight: bold;">{format_currency(gain)} ({gain_pct:+.2f}%)</span>
                                 </div>
                                 """,
@@ -782,9 +904,9 @@ def main():
                 st.markdown(
                     f"""
                     <div class="bank-card">
-                        <strong>{acc.get('name', 'Unknown')}</strong> ({acc.get('type', 'NPS')})<br>
-                        <strong>Value:</strong> <span style="color: green; font-weight: bold;">{format_currency(acc.get('value', 0))}</span><br>
-                        <small>Source: {acc.get('source_file')}</small>
+                        <strong>{acc.get("name", "Unknown")}</strong> ({acc.get("type", "NPS")})<br>
+                        <strong>Value:</strong> <span style="color: green; font-weight: bold;">{format_currency(acc.get("value", 0))}</span><br>
+                        <small>Source: {acc.get("source_file")}</small>
                     </div>
                     """,
                     unsafe_allow_html=True,
@@ -797,7 +919,9 @@ def main():
         if fixed_income_data and "deposits" in fixed_income_data:
             col1, col2 = st.columns(2)
             with col1:
-                st.metric("Total Principal", format_currency(fixed_income_data.get("total_principal", 0)))
+                st.metric(
+                    "Total Principal", format_currency(fixed_income_data.get("total_principal", 0))
+                )
             with col2:
                 st.metric("Total Deposits", fixed_income_data.get("deposit_count", 0))
 
@@ -805,23 +929,27 @@ def main():
                 st.markdown("### By Bank")
                 bank_data = []
                 for bank, info in fixed_income_data["by_bank"].items():
-                    bank_data.append({"Bank": bank, "Amount": info["principal"], "Count": info["count"]})
+                    bank_data.append(
+                        {"Bank": bank, "Amount": info["principal"], "Count": info["count"]}
+                    )
 
                 if bank_data:
                     df_fd_bank = pd.DataFrame(bank_data)
-                    fig = px.pie(df_fd_bank, values="Amount", names="Bank", title="FD Distribution", hole=0.4)
+                    fig = px.pie(
+                        df_fd_bank, values="Amount", names="Bank", title="FD Distribution", hole=0.4
+                    )
                     st.plotly_chart(fig, use_container_width=True)
 
             st.markdown("### Deposit Details")
             for dep in fixed_income_data["deposits"]:
-                amount_val = dep.get('amount') if 'amount' in dep else dep.get('Amount', 0)
-                holders_val = dep.get('holders') or dep.get('Holders', '')
+                amount_val = dep.get("amount") if "amount" in dep else dep.get("Amount", 0)
+                holders_val = dep.get("holders") or dep.get("Holders", "")
                 st.markdown(
                     f"""
                     <div class="bank-card">
-                        <strong>{dep.get('bank')}</strong> - {dep.get('fd_number', 'N/A')}<br>
-                        Amount: {format_currency(amount_val)} | Rate: {dep.get('interest_rate')}%<br>
-                        Maturity: {dep.get('maturity_date')} | Holders: {holders_val}<br>
+                        <strong>{dep.get("bank")}</strong> - {dep.get("fd_number", "N/A")}<br>
+                        Amount: {format_currency(amount_val)} | Rate: {dep.get("interest_rate")}%<br>
+                        Maturity: {dep.get("maturity_date")} | Holders: {holders_val}<br>
                     </div>
                     """,
                     unsafe_allow_html=True,
@@ -839,8 +967,8 @@ def main():
                 st.markdown(
                     f"""
                     <div class="bank-card">
-                        <strong>{prop.get('name')}</strong><br>
-                        Value: {format_currency(prop.get('value', 0))}
+                        <strong>{prop.get("name")}</strong><br>
+                        Value: {format_currency(prop.get("value", 0))}
                     </div>
                     """,
                     unsafe_allow_html=True,
@@ -848,7 +976,7 @@ def main():
         else:
             st.info("No real estate data available.")
 
-    with tab_other_assets:
+    with tab_other:
         st.markdown("## Other Assets")
         if other_assets_data and "assets" in other_assets_data:
             st.metric("Total Value", format_currency(other_assets_data.get("total_value", 0)))
@@ -858,8 +986,8 @@ def main():
                 st.markdown(
                     f"""
                     <div class="bank-card">
-                        <strong>{asset.get('name')}</strong><br>
-                        Value: {format_currency(asset.get('value', 0))}
+                        <strong>{asset.get("name")}</strong><br>
+                        Value: {format_currency(asset.get("value", 0))}
                     </div>
                     """,
                     unsafe_allow_html=True,
@@ -873,15 +1001,21 @@ def main():
         if liabilities_data and liabilities_data.get("liabilities"):
             col1, col2, col3 = st.columns(3)
             with col1:
-                st.metric("Total Liability", format_currency(liabilities_data.get("total_liability", 0)))
+                st.metric(
+                    "Total Liability", format_currency(liabilities_data.get("total_liability", 0))
+                )
             with col2:
-                st.metric("Total Receivable", format_currency(liabilities_data.get("total_receivable", 0)))
+                st.metric(
+                    "Total Receivable", format_currency(liabilities_data.get("total_receivable", 0))
+                )
             with col3:
                 net_pos = liabilities_data.get("net_position", 0)
-                net_color = "green" if net_pos >= 0 else "red"
-                st.metric("Net Position", format_currency(abs(net_pos)),
-                         delta="Receivable" if net_pos >= 0 else "Payable",
-                         delta_color="normal" if net_pos >= 0 else "inverse")
+                st.metric(
+                    "Net Position",
+                    format_currency(abs(net_pos)),
+                    delta="Receivable" if net_pos >= 0 else "Payable",
+                    delta_color="normal" if net_pos >= 0 else "inverse",
+                )
 
             st.markdown("### Liability Details")
 
@@ -890,7 +1024,10 @@ def main():
                 net_liability = liability_file.get("net_liability", 0)
                 txn_count = liability_file.get("transaction_count", 0)
 
-                with st.expander(f"**{source}** - Net Liability: {format_currency(net_liability)} ({txn_count} transactions)", expanded=True):
+                with st.expander(
+                    f"**{source}** - Net Liability: {format_currency(net_liability)} ({txn_count} transactions)",
+                    expanded=True,
+                ):
                     transactions = liability_file.get("transactions", [])
 
                     if transactions:
@@ -915,7 +1052,9 @@ def main():
 
                         # Summary by type
                         received = sum(t["amount_inr"] for t in transactions if t["amount_inr"] > 0)
-                        owed = abs(sum(t["amount_inr"] for t in transactions if t["amount_inr"] < 0))
+                        owed = abs(
+                            sum(t["amount_inr"] for t in transactions if t["amount_inr"] < 0)
+                        )
 
                         col1, col2 = st.columns(2)
                         with col1:
@@ -970,7 +1109,7 @@ def main():
             fixed_income_data=fixed_income_data,
             real_estate_data=real_estate_data,
             other_assets_data=other_assets_data,
-            liabilities_data=liabilities_data
+            liabilities_data=liabilities_data,
         )
 
         # Estimate dividends by PAN
@@ -980,7 +1119,9 @@ def main():
         valid_pans = [pan for pan in aggregated.keys() if pan != "UNKNOWN"]
 
         if not valid_pans:
-            st.warning("No PAN mappings found. Please configure src/pan_config.py with holder-to-PAN mappings.")
+            st.warning(
+                "No PAN mappings found. Please configure src/pan_config.py with holder-to-PAN mappings."
+            )
         else:
             # Summary cards for all PANs
             st.markdown("### Individual Net Worth Summary")
@@ -1037,7 +1178,7 @@ def main():
                 # Expandable section for each person
                 with st.expander(
                     f"**{assets.holder_name}** ({pan}) - Net Worth: {format_currency(assets.total_assets)}",
-                    expanded=len(valid_pans) <= 2
+                    expanded=len(valid_pans) <= 2,
                 ):
                     # Asset breakdown
                     col1, col2 = st.columns(2)
@@ -1046,7 +1187,15 @@ def main():
                         st.markdown("#### Asset Breakdown")
 
                         asset_data = {
-                            "Category": ["Bank Balance", "Equity Holdings", "Mutual Funds", "Pension/NPS", "Fixed Income", "Real Estate", "Other Assets"],
+                            "Category": [
+                                "Bank Balance",
+                                "Equity Holdings",
+                                "Mutual Funds",
+                                "Pension/NPS",
+                                "Fixed Income",
+                                "Real Estate",
+                                "Other Assets",
+                            ],
                             "Value": [
                                 assets.total_bank_balance,
                                 assets.total_equity_value,
@@ -1054,7 +1203,7 @@ def main():
                                 assets.total_pension_value,
                                 assets.total_fixed_income_value,
                                 assets.total_real_estate_value,
-                                assets.total_other_assets_value
+                                assets.total_other_assets_value,
                             ],
                         }
                         df_assets = pd.DataFrame(asset_data)
@@ -1073,7 +1222,7 @@ def main():
                             fig.update_traces(textposition="inside", textinfo="percent+label")
                             fig.update_layout(
                                 showlegend=False,
-                                margin=dict(t=10, b=10, l=10, r=10),
+                                margin={"t": 10, "b": 10, "l": 10, "r": 10},
                                 height=250,
                             )
                             st.plotly_chart(fig, use_container_width=True)
@@ -1134,8 +1283,8 @@ def main():
                                 st.markdown(
                                     f"""
                                     <div class="bank-card" style="padding: 8px;">
-                                        <strong>{data_icon} {stock['name'][:25]}</strong><br>
-                                        <small>Qty: {stock['quantity']:,.0f} | Dividend: {format_currency(stock['dividend'])} ({stock['yield_pct']:.1f}%)</small>
+                                        <strong>{data_icon} {stock["name"][:25]}</strong><br>
+                                        <small>Qty: {stock["quantity"]:,.0f} | Dividend: {format_currency(stock["dividend"])} ({stock["yield_pct"]:.1f}%)</small>
                                     </div>
                                     """,
                                     unsafe_allow_html=True,
@@ -1255,12 +1404,199 @@ def main():
                     if unknown.bank_accounts:
                         st.markdown("**Bank Accounts:**")
                         for acc in unknown.bank_accounts:
-                            st.markdown(f"- {acc['bank']}: {acc['holder_name']} - {format_currency(acc['balance'])}")
+                            st.markdown(
+                                f"- {acc['bank']}: {acc['holder_name']} - {format_currency(acc['balance'])}"
+                            )
 
                     if unknown.demat_accounts:
                         st.markdown("**Demat Accounts:**")
                         for acc in unknown.demat_accounts:
-                            st.markdown(f"- {acc['depository']} ({acc['dp_id']}): {acc['holder_name']} - {format_currency(acc['total_value'])}")
+                            st.markdown(
+                                f"- {acc['depository']} ({acc['dp_id']}): {acc['holder_name']} - {format_currency(acc['total_value'])}"
+                            )
+
+    with tab_planning:
+        st.markdown("## Planning")
+
+        if not planning_data:
+            st.info(
+                "No planning data available. Run `python process_all.py` to generate planning analytics."
+            )
+        else:
+            planning_tabs = st.tabs(
+                ["Allocation", "Trends", "FD Alerts", "Rebalancing", "Tax Harvesting", "Goals"]
+            )
+
+            with planning_tabs[0]:
+                allocation_rows = planning_data.get("allocation", {}).get("allocation", [])
+                non_zero_allocation = [row for row in allocation_rows if row.get("value", 0) > 0]
+                if non_zero_allocation:
+                    df_allocation = pd.DataFrame(non_zero_allocation)
+                    fig = px.pie(
+                        df_allocation,
+                        values="value",
+                        names="category",
+                        title="Current Asset Allocation",
+                        hole=0.4,
+                    )
+                    st.plotly_chart(fig, use_container_width=True)
+                    df_display = df_allocation[["category", "value", "percentage"]].copy()
+                    df_display["value"] = [format_currency(value) for value in df_display["value"]]
+                    df_display["percentage"] = [
+                        f"{value:.2f}%" for value in df_display["percentage"]
+                    ]
+                    df_display.columns = ["Category", "Value", "Allocation"]
+                    st.dataframe(df_display, use_container_width=True, hide_index=True)
+                else:
+                    st.info("No positive asset values available for allocation analysis.")
+
+            with planning_tabs[1]:
+                if history_data:
+                    df_history = pd.DataFrame(history_data)
+                    if len(df_history) > 1:
+                        fig = px.line(
+                            df_history,
+                            x="period",
+                            y="total_networth",
+                            markers=True,
+                            title="Net Worth Trend",
+                        )
+                        st.plotly_chart(fig, use_container_width=True)
+                    else:
+                        st.info(
+                            "One snapshot is available. Add more monthly data periods for a trend line."
+                        )
+                    display_history = df_history.copy()
+                    currency_cols = [
+                        "total_networth",
+                        "bank_balance",
+                        "equity_value",
+                        "mf_value",
+                        "fixed_income_value",
+                        "real_estate_value",
+                        "other_assets_value",
+                        "liabilities",
+                    ]
+                    for col in currency_cols:
+                        if col in display_history.columns:
+                            display_history[col] = display_history[col].apply(format_currency)
+                    st.dataframe(display_history, use_container_width=True, hide_index=True)
+                else:
+                    st.info("No historical snapshots available yet.")
+
+            with planning_tabs[2]:
+                fd_alerts = planning_data.get("fd_alerts", {})
+                buckets = fd_alerts.get("buckets", {})
+                cols = st.columns(4)
+                cols[0].metric("Matured", buckets.get("matured", 0))
+                cols[1].metric("Next 30 Days", buckets.get("next_30_days", 0))
+                cols[2].metric("Next 90 Days", buckets.get("next_90_days", 0))
+                cols[3].metric("Later", buckets.get("later", 0))
+                alerts = fd_alerts.get("alerts", [])
+                priority_alerts = [
+                    alert
+                    for alert in alerts
+                    if alert.get("alert_bucket") in {"matured", "next_30_days", "next_90_days"}
+                ]
+                if priority_alerts:
+                    df_alerts = pd.DataFrame(priority_alerts)
+                    display_cols = [
+                        "bank",
+                        "fd_number",
+                        "amount",
+                        "maturity_date",
+                        "days_to_maturity",
+                        "alert_bucket",
+                    ]
+                    df_alerts = df_alerts[[col for col in display_cols if col in df_alerts.columns]]
+                    if "amount" in df_alerts.columns:
+                        df_alerts["amount"] = [
+                            format_currency(value) for value in df_alerts["amount"]
+                        ]
+                    st.dataframe(df_alerts, use_container_width=True, hide_index=True)
+                else:
+                    st.success("No FD maturities in the next 90 days.")
+
+            with planning_tabs[3]:
+                rebalancing = planning_data.get("rebalancing", {})
+                if not rebalancing.get("configured"):
+                    st.info(
+                        "No target allocation configured. Add `data/planning.json` to enable rebalancing suggestions."
+                    )
+                    st.code(
+                        '{"target_allocation": {"bank_balance": 10, "equity_value": 35, "mf_value": 25, "fixed_income_value": 20, "real_estate_value": 10}}'
+                    )
+                else:
+                    suggestions = rebalancing.get("suggestions", [])
+                    if suggestions:
+                        df_rebalance = pd.DataFrame(suggestions)
+                        df_rebalance["delta_display"] = df_rebalance["delta"].apply(format_currency)
+                        df_rebalance["current_pct"] = df_rebalance["current_pct"].apply(
+                            lambda x: f"{x:.2f}%"
+                        )
+                        df_rebalance["target_pct"] = df_rebalance["target_pct"].apply(
+                            lambda x: f"{x:.2f}%"
+                        )
+                        st.dataframe(
+                            df_rebalance[
+                                ["category", "current_pct", "target_pct", "delta_display"]
+                            ],
+                            use_container_width=True,
+                            hide_index=True,
+                        )
+                    else:
+                        st.info("No rebalancing suggestions available.")
+
+            with planning_tabs[4]:
+                harvesting = planning_data.get("tax_harvesting", {})
+                for reason in harvesting.get("missing_reasons", []):
+                    st.info(reason)
+                candidates = harvesting.get("candidates", [])
+                if candidates:
+                    df_candidates = pd.DataFrame(candidates)
+                    df_candidates["invested_value"] = df_candidates["invested_value"].apply(
+                        format_currency
+                    )
+                    df_candidates["current_value"] = df_candidates["current_value"].apply(
+                        format_currency
+                    )
+                    df_candidates["gain"] = df_candidates["gain"].apply(format_currency)
+                    df_candidates["gain_pct"] = df_candidates["gain_pct"].apply(
+                        lambda x: f"{x:+.2f}%"
+                    )
+                    st.dataframe(
+                        df_candidates[
+                            [
+                                "asset_type",
+                                "name",
+                                "pan",
+                                "invested_value",
+                                "current_value",
+                                "gain",
+                                "gain_pct",
+                                "direction",
+                            ]
+                        ],
+                        use_container_width=True,
+                        hide_index=True,
+                    )
+                else:
+                    st.info("No tax harvesting candidates available from current data.")
+
+            with planning_tabs[5]:
+                goals = planning_data.get("goals", {})
+                if not goals.get("configured"):
+                    st.info(
+                        "No goals configured. Add `data/goals.csv` with Name, Target Amount, Current Amount, Target Date columns."
+                    )
+                elif goals.get("goals"):
+                    for goal in goals["goals"]:
+                        st.progress(min(goal.get("progress_pct", 0) / 100, 1.0))
+                        st.markdown(
+                            f"**{goal.get('name', 'Goal')}**: {format_currency(goal.get('current_amount', 0))} / {format_currency(goal.get('target_amount', 0))} ({goal.get('progress_pct', 0):.2f}%)"
+                        )
+                else:
+                    st.info("Goals file exists but contains no goals.")
 
     st.markdown("---")
     st.markdown(
