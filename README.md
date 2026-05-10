@@ -345,10 +345,37 @@ def parse_newbank_statement(file_path: Path) -> Optional[Dict]:
 - [x] ~~Real estate valuation~~ (Completed - Properties parser)
 - [x] ~~Pension tracking~~ (Completed - NPS/EPF/PPF parser)
 - [x] ~~Liabilities tracking~~ (Completed - Loans and receivables)
-- [ ] Historical trend analysis (month-over-month comparisons)
+- [x] Historical trend analysis (month-over-month comparisons)
 - [ ] Automated monthly processing with scheduled runs
-- [ ] FD maturity tracking and alerts
-- [ ] Real-time equity price updates (beyond Upstox)
-- [ ] Asset allocation analysis and rebalancing suggestions
-- [ ] Tax harvesting recommendations (LTCG/STCG)
-- [ ] Goal-based tracking (retirement, education, etc.)
+- [x] FD maturity tracking and alerts
+- [x] Real-time equity price updates (via Upstox sync)
+- [x] Asset allocation analysis and rebalancing suggestions
+- [x] Tax harvesting recommendations (based on available cost-basis data)
+- [x] Goal-based tracking (via optional `data/goals.csv`)
+
+### Planning Configuration
+
+The dashboard includes a Planning tab backed by `output/planning_data.json` and `output/history_data.json`.
+
+Optional target allocations can be configured in `data/planning.json`:
+
+```json
+{
+  "target_allocation": {
+    "bank_balance": 10,
+    "equity_value": 35,
+    "mf_value": 25,
+    "fixed_income_value": 20,
+    "real_estate_value": 10
+  }
+}
+```
+
+Optional goals can be configured in `data/goals.csv`:
+
+```csv
+Name,Target Amount,Current Amount,Target Date
+Retirement,50000000,,2045-12-31
+```
+
+If these files are absent, the dashboard shows safe “not configured” empty states.

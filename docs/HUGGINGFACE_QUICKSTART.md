@@ -1,50 +1,86 @@
-# Hugging Face Spaces - Quick Start Guide ## TL;DR - Fastest Deployment Path ```bash
-# 1. Create Space on HuggingFace.co
-# Visit: https://huggingface.co/new-space
-# Choose: Streamlit SDK, Private visibility # 2. Clone the space
+# Hugging Face Spaces - Quick Start Guide
+
+## Fastest Deployment Path
+
+```bash
+# 1. Create a private Streamlit Space at https://huggingface.co/new-space
+# 2. Clone the Space
 git clone https://huggingface.co/spaces/YOUR_USERNAME/YOUR_SPACE_NAME
-cd YOUR_SPACE_NAME # 3. Copy essential files from MeriNetWorth
+cd YOUR_SPACE_NAME
+
+# 3. Copy deployable files from MeriNetWorth
 cp -r /path/to/MeriNetWorth/web .
+cp -r /path/to/MeriNetWorth/src .
+cp -r /path/to/MeriNetWorth/output .
 cp /path/to/MeriNetWorth/requirements.txt .
 cp /path/to/MeriNetWorth/docs/README_HF.md README.md
-cp -r /path/to/MeriNetWorth/.streamlit .
-cp -r /path/to/MeriNetWorth/output . # 4. Push to Hugging Face
+
+# 4. Push to Hugging Face
 git add .
-git commit -m "Initial deployment"
-git push # 5. Set password in Space Settings
-# Go to: https://huggingface.co/spaces/YOUR_USERNAME/YOUR_SPACE_NAME/settings
-# Add secret: DASHBOARD_PASSWORD = your_secure_password # Done! Visit your space URL
-``` ## File Checklist Before pushing, ensure you have: - `web/app.py` - Main dashboard (with authentication)
-- `requirements.txt` - Python dependencies
-- `README.md` - Space metadata and description
-- `.streamlit/config.toml` - Streamlit configuration
-- `output/bank_data.json` - Your financial data
-- **NOT**`data/` directory (contains raw bank statements)
-- **NOT**`.streamlit/secrets.toml` (contains password) ## Security Checklist Before deployment: - [ ] Space visibility set to **Private**
-- [ ] `data/` directory is NOT being pushed (check .gitignore)
-- [ ] `.streamlit/secrets.toml` is NOT being pushed
-- [ ] Strong password set in Hugging Face secrets (12+ chars)
-- [ ] Verified no sensitive account numbers in `bank_data.json` ## Testing Locally First ```bash
-# Set test password
-export DASHBOARD_PASSWORD="test123" # Or use the provided script
-./test_auth_local.sh # Visit http://localhost:8501 and test
-``` ## Common First-Time Issues ### 1. "No data found" error
+git commit -m "Deploy dashboard"
+git push
+```
+
+## File Checklist
+
+Before pushing, ensure the Space contains:
+
+- `web/app.py`
+- `src/`
+- `requirements.txt`
+- `README.md`
+- `output/*.json`
+
+Do not push:
+
+- `data/`
+- `.streamlit/secrets.toml`
+- Raw bank, equity, MF, pension, or liability statements
+
+## Security Checklist
+
+- [ ] Space visibility is **Private**
+- [ ] `data/` is not included
+- [ ] No secrets files are included
+- [ ] `DASHBOARD_PASSWORD` is configured in Space secrets
+- [ ] Output JSON files have been reviewed for sensitive fields before upload
+
+## Test Locally First
+
 ```bash
-# Ensure output directory exists with data
-ls output/bank_data.json # Should show the file
-``` ### 2. Can't find app file
-```markdown
-# In README.md, ensure this line is correct:
+export DASHBOARD_PASSWORD="test123"
+python process_all.py
+streamlit run web/app.py
+```
+
+Visit `http://localhost:8501`, enter the password, and confirm the dashboard renders.
+
+## Common Issues
+
+### “No data found”
+
+Confirm `output/bank_data.json` exists before deployment.
+
+### App file not found
+
+Ensure the Space README metadata points to:
+
+```yaml
 app_file: web/app.py
-``` ### 3. Password not working
-- Wait 30 seconds after setting the secret
-- Try refreshing the browser
-- Check Space logs for errors ## Space Settings You Need | Setting | Value |
-|---------|-------|
+```
+
+### Password not working
+
+- Wait for the Space to restart after setting the secret.
+- Refresh the browser.
+- Check Space logs for environment-variable errors.
+
+## Space Settings
+
+| Setting | Value |
+| --- | --- |
 | SDK | Streamlit |
 | SDK Version | 1.28.0 or higher |
 | Visibility | Private |
-| Hardware | CPU basic (free) |
-| **Secret: DASHBOARD_PASSWORD**| Your secure password | ## Your Space URLs After deployment, you'll have: - **App**: `https://huggingface.co/spaces/USERNAME/SPACE_NAME`
-- **Settings**: `https://huggingface.co/spaces/USERNAME/SPACE_NAME/settings`
-- **Logs**: Check the "Logs" tab in your space ## Need Help? See full guide: [DEPLOYMENT.md](DEPLOYMENT.md)
+| Hardware | CPU basic |
+| Secret | `DASHBOARD_PASSWORD` |

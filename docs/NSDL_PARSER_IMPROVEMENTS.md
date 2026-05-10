@@ -68,9 +68,9 @@ When keyword matching fails, the parser now uses positional logic:
 
 ## Testing
 
-Run the test script to verify improvements:
+Run the pytest equity test to verify improvements:
 ```bash
-python test_equity.py
+python -m pytest tests/test_equity.py
 ```
 
 Expected output:
@@ -133,7 +133,7 @@ Enhanced metadata extraction (lines 98-137) to:
 
 ✅ **All NSDL files now parse successfully without warnings!**
 
-Running `python test_equity.py`:
+Running `python -m pytest tests/test_equity.py`:
 - 11 NSDL files processed successfully
 - 0 warnings about column identification
 - Total: 480 equity holdings from NSDL accounts
