@@ -1,7 +1,7 @@
 # Deploying MeriNetWorth to Hugging Face Spaces This guide walks you through deploying your password-protected financial dashboard to Hugging Face Spaces. ## Prerequisites - [ ] Hugging Face account (create one at https://huggingface.co/join)
 - [ ] `output/bank_data.json` file generated (run the Jupyter notebook)
 - [ ] Git installed on your machine ## Step-by-Step Deployment ### 1. Create a Hugging Face Space 1. Go to https://huggingface.co/new-space
-2. Fill in the details: - **Space name**: `merinetworth` (or your preferred name) - **License**: MIT - **Select SDK**: Choose **Streamlit**- **Space hardware**: CPU basic (free tier is sufficient) - **Visibility**: **Private**(recommended for financial data)
+2. Fill in the details: - **Space name**: `merinetworth` (or your preferred name) - **License**: Other (HONCL-1.0) - **Select SDK**: Choose **Streamlit**- **Space hardware**: CPU basic (free tier is sufficient) - **Visibility**: **Private**(recommended for financial data)
 3. Click **Create Space**### 2. Prepare Your Repository **IMPORTANT: Security Check Before Deployment**Before pushing to Hugging Face, verify that sensitive data is protected: ```bash
 # Check what will be committed
 git status # Ensure data/ directory is NOT in the list
@@ -40,7 +40,9 @@ sdk: streamlit
 sdk_version: "1.28.0"
 app_file: web/app.py
 pinned: false
-license: mit
+license: other
+license_name: honcl-1.0
+license_link: LICENSE
 ---
 ``` Make sure `app_file: web/app.py` points to the correct path. ### 7. Commit and Push ```bash
 cd /path/to/SPACE_NAME # Add all files

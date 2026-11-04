@@ -6,7 +6,9 @@ sdk: streamlit
 sdk_version: "1.28.0"
 app_file: web/app.py
 pinned: false
-license: mit
+license: other
+license_name: honcl-1.0
+license_link: LICENSE
 --- # MeriNetWorth - Bank Account Dashboard A secure, password-protected financial dashboard for consolidating and visualizing bank account data. ## Features - Password-protected access
 - Multi-bank account consolidation
 - Interactive visualizations (Pie charts, Bar charts, Treemaps)
